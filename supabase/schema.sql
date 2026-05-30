@@ -98,7 +98,7 @@ alter table messages enable row level security;
 create policy "messages_owner" on messages for all using (
   space_id in (select id from spaces where user_id = auth.uid())
 );
-create policy "messages_service" on messages for insert using (true);
+create policy "messages_service" on messages for insert with check (true);
 
 -- Fonction de recherche par similarité cosinus
 create or replace function match_chunks(
