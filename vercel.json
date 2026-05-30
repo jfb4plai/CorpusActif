@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/embed.js": { "maxDuration": 60 },
+    "api/chat.js": { "maxDuration": 30 }
+  },
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+}
