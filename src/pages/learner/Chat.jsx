@@ -23,6 +23,7 @@ export default function Chat() {
   const [learnerCode, setLearnerCode] = useState('');
   const [codeSubmitted, setCodeSubmitted] = useState(false);
   const [isSocratic, setIsSocratic] = useState(false);
+  const [spaceName, setSpaceName] = useState('');
   const bottomRef = useRef();
 
   useEffect(() => {
@@ -32,6 +33,8 @@ export default function Chat() {
         setLearnerCode(payload.learner_code);
         setCodeSubmitted(true);
       }
+      if (payload.space_name) setSpaceName(payload.space_name);
+      if (payload.pedagogical_mode === 'socratique') setIsSocratic(true);
     } catch {}
   }, [token]);
 
@@ -121,7 +124,18 @@ export default function Chat() {
       </header>
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-2xl mx-auto w-full">
         {messages.length === 0 && (
-          <p className="text-center text-gray-400 text-sm mt-16">Pose ta première question…</p>
+          isSocratic ? (
+            <div className="mt-16 mx-auto max-w-sm bg-white border border-orange-200 rounded-2xl px-6 py-5 text-center">
+              <p className="text-sm text-gray-700 leading-relaxed">
+                Ton enseignant a préparé des ressources sur <strong>{spaceName || 'ce sujet'}</strong>.
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Dis-moi ce que tu sais déjà sur ce sujet.
+              </p>
+            </div>
+          ) : (
+            <p className="text-center text-gray-400 text-sm mt-16">Pose ta première question…</p>
+          )
         )}
         {messages.map((m, i) => (
           <ChatMessage key={i} {...m} />

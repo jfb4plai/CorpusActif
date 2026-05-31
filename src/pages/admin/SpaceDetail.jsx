@@ -100,7 +100,12 @@ export default function SpaceDetail() {
     <div>
       {/* En-tête espace */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800 mb-4">{space.name}</h1>
+        <h1 className="text-2xl font-semibold text-gray-800 mb-1">{space.name}</h1>
+        {pedagogicalMode === 'socratique' && (
+          <p className="text-xs text-orange-500 mb-3">
+            En mode socratique, ce nom est affiché à vos apprenants. Utilisez le sujet pédagogique plutôt qu'un identifiant de classe — ex : "La photosynthèse" plutôt que "Classe 3B".
+          </p>
+        )}
 
         {/* Hors-base */}
         <div className="flex items-center gap-2 text-sm mb-4">
