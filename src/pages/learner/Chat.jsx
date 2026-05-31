@@ -124,18 +124,14 @@ export default function Chat() {
       </header>
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-2xl mx-auto w-full">
         {messages.length === 0 && (
-          isSocratic ? (
-            <div className="mt-16 mx-auto max-w-sm bg-white border border-orange-200 rounded-2xl px-6 py-5 text-center">
-              <p className="text-sm text-gray-700 leading-relaxed">
-                Ton enseignant a préparé des ressources sur <strong>{spaceName || 'ce sujet'}</strong>.
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
-                Dis-moi ce que tu sais déjà sur ce sujet.
-              </p>
-            </div>
-          ) : (
-            <p className="text-center text-gray-400 text-sm mt-16">Pose ta première question…</p>
-          )
+          <div className={`mt-16 mx-auto max-w-sm bg-white rounded-2xl px-6 py-5 text-center border ${isSocratic ? 'border-orange-200' : 'border-gray-100'}`}>
+            <p className="text-sm text-gray-700 leading-relaxed">
+              Ton enseignant a préparé des ressources sur <strong>{spaceName || 'ce sujet'}</strong>.
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              {isSocratic ? 'Dis-moi ce que tu sais déjà sur ce sujet.' : 'Pose ta première question…'}
+            </p>
+          </div>
         )}
         {messages.map((m, i) => (
           <ChatMessage key={i} {...m} />
