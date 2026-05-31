@@ -44,6 +44,11 @@ export default function LearnerCodes({ spaceId, session }) {
     setGeneratingQr(null);
   }
 
+  async function deleteCode(id) {
+    await supabase.from('learner_codes').delete().eq('id', id);
+    setCodes(prev => prev.filter(c => c.id !== id));
+  }
+
   async function generateSpaceQR() {
     setGeneratingQr('__space__');
     const res = await fetch('/api/qr', {
@@ -96,15 +101,23 @@ export default function LearnerCodes({ spaceId, session }) {
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {codes.map(c => (
-            <button
-              key={c.id}
-              onClick={() => generateQR(c.code)}
-              disabled={generatingQr === c.code}
-              className="bg-white border rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:border-teal-400 transition text-left"
-            >
-              {c.code}
-              <span className="block text-xs text-gray-400 font-normal mt-0.5">Générer QR</span>
-            </button>
+            <div key={c.id} className="bg-white border rounded-lg px-3 py-2 flex items-center justify-between hover:border-teal-400 transition">
+              <button
+                onClick={() => generateQR(c.code)}
+                disabled={generatingQr === c.code}
+                className="text-sm font-medium text-gray-700 text-left"
+              >
+                {c.code}
+                <span className="block text-xs text-gray-400 font-normal mt-0.5">Générer QR</span>
+              </button>
+              <button
+                onClick={() => deleteCode(c.id)}
+                className="text-gray-300 hover:text-red-400 transition text-xs ml-2"
+                title="Supprimer ce code"
+              >
+                ✕
+              </button>
+            </div>
           ))}
         </div>
       </div>
