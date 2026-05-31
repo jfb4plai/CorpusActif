@@ -8,11 +8,13 @@ function generateCodeList(prefix, count) {
 
 export default function LearnerCodes({ spaceId, session }) {
   const [codes, setCodes] = useState([]);
+  const [sessions, setSessions] = useState([]);
   const [prefix, setPrefix] = useState('E');
   const [count, setCount] = useState(5);
   const [qrData, setQrData] = useState(null);
   const [generatingQr, setGeneratingQr] = useState(null);
   const [expiresDays, setExpiresDays] = useState(30);
+  const [showSessions, setShowSessions] = useState(false);
 
   async function loadCodes() {
     const { data } = await supabase
@@ -23,7 +25,21 @@ export default function LearnerCodes({ spaceId, session }) {
     setCodes(data || []);
   }
 
-  useEffect(() => { loadCodes(); }, [spaceId]);
+  async function loadSessions() {
+    const { data } = await supabase
+      .from('sessions')
+      .select('id, learner_code, expires_at, created_at')
+      .eq('space_id', spaceId)
+      .order('created_at', { ascending: false });
+    setSessions(data || []);
+  }
+
+  useEffect(() => { loadCodes(); loadSessions(); }, [spaceId]);
+
+  async function revokeSession(id) {
+    await supabase.from('sessions').delete().eq('id', id);
+    setSessions(prev => prev.filter(s => s.id !== id));
+  }
 
   async function addCodes() {
     const newCodes = generateCodeList(prefix, count);
@@ -57,8 +73,9 @@ export default function LearnerCodes({ spaceId, session }) {
       body: JSON.stringify({ space_id: spaceId, expires_days: expiresDays }),
     });
     const data = await res.json();
-    setQrData({ url: data.url, code: 'Espace entier' });
+    setQrData({ url: data.url, code: 'QR Code commun' });
     setGeneratingQr(null);
+    loadSessions();
   }
 
   return (
@@ -89,16 +106,17 @@ export default function LearnerCodes({ spaceId, session }) {
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-1">
           <h3 className="text-sm font-semibold text-gray-700">Codes existants ({codes.length})</h3>
           <button
             onClick={generateSpaceQR}
             disabled={generatingQr === '__space__'}
             className="text-xs border border-[#0a9370] text-[#0a9370] px-3 py-1 rounded hover:bg-teal-50"
           >
-            QR espace entier
+            QR Code commun
           </button>
         </div>
+        <p className="text-xs text-gray-400 mb-3">Le QR Code commun est un code unique à afficher au tableau. Chaque apprenant scanne le même et saisit son code personnel à l'arrivée.</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {codes.map(c => (
             <div key={c.id} className="bg-white border rounded-lg px-3 py-2 flex items-center justify-between hover:border-teal-400 transition">
@@ -120,6 +138,42 @@ export default function LearnerCodes({ spaceId, session }) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* QR codes actifs */}
+      <div>
+        <button
+          onClick={() => setShowSessions(s => !s)}
+          className="text-sm font-semibold text-gray-700 flex items-center gap-2"
+        >
+          QR codes actifs ({sessions.length})
+          <span className="text-xs text-gray-400">{showSessions ? '▲' : '▼'}</span>
+        </button>
+        {showSessions && (
+          <div className="mt-3 space-y-2">
+            {sessions.length === 0 && (
+              <p className="text-xs text-gray-400">Aucun QR code actif.</p>
+            )}
+            {sessions.map(s => (
+              <div key={s.id} className="flex items-center justify-between bg-white border rounded-lg px-4 py-2">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">
+                    {s.learner_code || 'QR Code commun'}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Expire le {new Date(s.expires_at).toLocaleDateString('fr-BE')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => revokeSession(s.id)}
+                  className="text-xs text-red-400 hover:text-red-600"
+                >
+                  Révoquer
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {qrData && (
