@@ -9,7 +9,7 @@ const supabase = createClient(
 );
 const jwtSecret = new TextEncoder().encode(process.env.JWT_SECRET);
 
-const SIMILARITY_THRESHOLD = 0.3;
+const SIMILARITY_THRESHOLD = 0.5;
 const MATCH_COUNT = 5;
 
 async function embedQuery(text) {
