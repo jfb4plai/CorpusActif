@@ -126,3 +126,10 @@ as $$
   order by c.embedding <=> query_embedding
   limit match_count;
 $$;
+
+-- Migration : seuil de similarité configurable + mode pédagogique
+alter table spaces
+  add column if not exists similarity_threshold float not null default 0.5
+    check (similarity_threshold between 0.1 and 0.9),
+  add column if not exists pedagogical_mode text not null default 'direct'
+    check (pedagogical_mode in ('direct', 'socratique'));
