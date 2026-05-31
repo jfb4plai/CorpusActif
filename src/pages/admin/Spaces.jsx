@@ -6,6 +6,7 @@ export default function Spaces() {
   const { session } = useOutletContext();
   const [spaces, setSpaces] = useState([]);
   const [newName, setNewName] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,10 +28,16 @@ export default function Spaces() {
     }
   }
 
+  async function deleteSpace(id) {
+    await supabase.from('spaces').delete().eq('id', id);
+    setSpaces(prev => prev.filter(s => s.id !== id));
+    setConfirmDelete(null);
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-semibold text-gray-800 mb-6">Mes espaces</h1>
-      <p className="text-xs text-gray-400 mb-2">Utilisez le sujet pédagogique comme nom — ex : "La photosynthèse" plutôt que "Classe 3B". Ce nom est affiché à vos apprenants.</p>
+      <p className="text-sm font-bold text-gray-600 mb-2">Utilisez le sujet pédagogique comme nom — ex : "La photosynthèse" plutôt que "Classe 3B". Ce nom est affiché à vos apprenants.</p>
       <form onSubmit={createSpace} className="flex gap-3 mb-8">
         <input
           value={newName}
@@ -44,14 +51,30 @@ export default function Spaces() {
       </form>
       <div className="grid gap-3">
         {spaces.map(s => (
-          <button
-            key={s.id}
-            onClick={() => navigate(`/admin/spaces/${s.id}`)}
-            className="text-left bg-white border rounded-lg p-4 hover:border-teal-400 transition"
-          >
-            <p className="font-medium text-gray-800">{s.name}</p>
-            <p className="text-xs text-gray-400 mt-1">Mode : {s.out_of_base_mode}</p>
-          </button>
+          <div key={s.id} className="bg-white border rounded-lg p-4 flex items-center justify-between hover:border-teal-400 transition">
+            <button
+              onClick={() => navigate(`/admin/spaces/${s.id}`)}
+              className="text-left flex-1"
+            >
+              <p className="font-medium text-gray-800">{s.name}</p>
+              <p className="text-xs text-gray-400 mt-1">Mode : {s.out_of_base_mode}</p>
+            </button>
+            {confirmDelete === s.id ? (
+              <div className="flex items-center gap-2 ml-4">
+                <span className="text-xs text-red-500">Supprimer ?</span>
+                <button onClick={() => deleteSpace(s.id)} className="text-xs text-red-500 font-medium hover:text-red-700">Oui</button>
+                <button onClick={() => setConfirmDelete(null)} className="text-xs text-gray-400 hover:text-gray-600">Non</button>
+              </div>
+            ) : (
+              <button
+                onClick={e => { e.stopPropagation(); setConfirmDelete(s.id); }}
+                className="text-gray-300 hover:text-red-400 transition text-xs ml-4"
+                title="Supprimer cet espace"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         ))}
       </div>
     </div>
