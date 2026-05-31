@@ -30,11 +30,12 @@ export default function Spaces() {
   return (
     <div>
       <h1 className="text-2xl font-semibold text-gray-800 mb-6">Mes espaces</h1>
+      <p className="text-xs text-gray-400 mb-2">Utilisez le sujet pédagogique comme nom — ex : "La photosynthèse" plutôt que "Classe 3B". Ce nom est affiché à vos apprenants.</p>
       <form onSubmit={createSpace} className="flex gap-3 mb-8">
         <input
           value={newName}
           onChange={e => setNewName(e.target.value)}
-          placeholder="Nom du nouvel espace…"
+          placeholder="Ex : La photosynthèse, Les fractions…"
           className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
         />
         <button type="submit" className="bg-[#0a9370] text-white px-4 py-2 rounded text-sm font-medium hover:bg-teal-700">
