@@ -21,17 +21,20 @@ export default function AdminLayout() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Chargement…</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{color:'var(--text3)'}}>Chargement…</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-[#0a9370] text-white px-6 py-3 flex items-center justify-between">
-        <Link to="/admin" className="font-semibold text-lg">CorpusActif</Link>
-        <button onClick={() => signOut().then(() => navigate('/login'))} className="text-sm opacity-80 hover:opacity-100">
+    <div className="min-h-screen" style={{backgroundColor:'var(--bg)'}}>
+      <nav style={{backgroundColor:'var(--teal)'}} className="text-white px-6 py-4 flex items-center justify-between shadow-sm">
+        <Link to="/admin" className="flex items-center gap-3">
+          <img src="/plai-logo.jpg" alt="PLAI" className="h-7" />
+          <span style={{fontFamily:'DM Serif Display, serif', fontSize:'1.2rem', fontWeight:400}}>CorpusActif</span>
+        </Link>
+        <button onClick={() => signOut().then(() => navigate('/login'))} className="text-sm opacity-75 hover:opacity-100 transition">
           Déconnexion
         </button>
       </nav>
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <main className="max-w-4xl mx-auto px-6 py-10">
         <Outlet context={{ session }} />
       </main>
     </div>

@@ -1,3 +1,31 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --bg: #faf9f7;
+  --surface: #ffffff;
+  --surface2: #f4f2ee;
+  --border: #e8e4dd;
+  --border2: #d4cfc6;
+  --text: #1a1814;
+  --text2: #5a564f;
+  --text3: #9a958c;
+  --teal: #0a9370;
+  --orange: #f97316;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+}
+
+h1, h2, h3 {
+  font-family: 'DM Serif Display', serif;
+  font-weight: 400;
+}
+
+input, textarea, select, button {
+  font-family: 'DM Sans', sans-serif;
+}
