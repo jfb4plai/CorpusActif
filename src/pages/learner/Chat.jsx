@@ -2,6 +2,18 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import ChatMessage from '../../components/ChatMessage';
 
+// Retire les marqueurs [INDICE] et [RÉPONSE] du texte affiché
+function stripMarker(content) {
+  return content.replace(/^\[(INDICE|RÉPONSE)\]\s*/u, '');
+}
+
+// Détermine le niveau socratique d'un message assistant
+function getSocraticLevel(content) {
+  if (content.startsWith('[RÉPONSE]')) return 'reponse';
+  if (content.startsWith('[INDICE]')) return 'indice';
+  return 'relance';
+}
+
 export default function Chat() {
   const { token } = useParams();
   const [messages, setMessages] = useState([]);
@@ -10,9 +22,9 @@ export default function Chat() {
   const [error, setError] = useState('');
   const [learnerCode, setLearnerCode] = useState('');
   const [codeSubmitted, setCodeSubmitted] = useState(false);
+  const [isSocratic, setIsSocratic] = useState(false);
   const bottomRef = useRef();
 
-  // Vérifier si le token contient déjà un learner_code
   useEffect(() => {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
@@ -33,7 +45,14 @@ export default function Chat() {
 
     const question = input.trim();
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: question }]);
+
+    // Historique des messages à envoyer (rôles user/assistant avec contenu brut)
+    const history = messages.map(m => ({
+      role: m.role,
+      content: m.rawContent || m.content,
+    }));
+
+    setMessages(prev => [...prev, { role: 'user', content: question, rawContent: question }]);
     setLoading(true);
     setError('');
 
@@ -41,15 +60,24 @@ export default function Chat() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, question }),
+        body: JSON.stringify({ token, question, history }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+
+      if (data.pedagogical_mode === 'socratique') setIsSocratic(true);
+
+      const rawAnswer = data.answer;
+      const level = getSocraticLevel(rawAnswer);
+      const displayContent = stripMarker(rawAnswer);
+
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: data.answer,
+        content: displayContent,
+        rawContent: rawAnswer,
         sources: data.sources,
         isOutOfBase: data.is_out_of_base,
+        socraticLevel: data.pedagogical_mode === 'socratique' ? level : null,
       }]);
     } catch (err) {
       setError(err.message);
@@ -58,7 +86,6 @@ export default function Chat() {
     }
   }
 
-  // Demander le code si absent du token
   if (!codeSubmitted) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -87,6 +114,9 @@ export default function Chat() {
       <header className="bg-[#0a9370] text-white px-4 py-3 flex items-center gap-3">
         <img src="/plai-logo.jpg" alt="PLAI" className="h-7" />
         <span className="font-medium text-sm">CorpusActif</span>
+        {isSocratic && (
+          <span className="text-xs bg-[#f97316] px-2 py-0.5 rounded-full font-medium">Socratique</span>
+        )}
         <span className="ml-auto text-xs opacity-70">{learnerCode}</span>
       </header>
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-2xl mx-auto w-full">

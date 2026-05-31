@@ -1,10 +1,24 @@
-export default function ChatMessage({ role, content, sources, isOutOfBase }) {
+const SOCRATIC_INDICATORS = {
+  relance: { color: 'bg-[#0a9370]', label: 'Question' },
+  indice: { color: 'bg-[#f97316]', label: 'Indice' },
+  reponse: { color: 'bg-green-500', label: 'Réponse' },
+};
+
+export default function ChatMessage({ role, content, sources, isOutOfBase, socraticLevel }) {
   const isUser = role === 'user';
+  const indicator = socraticLevel ? SOCRATIC_INDICATORS[socraticLevel] : null;
+
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
       <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
         isUser ? 'bg-[#0a9370] text-white' : 'bg-white border text-gray-800'
       }`}>
+        {indicator && !isUser && (
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className={`w-2 h-2 rounded-full ${indicator.color} shrink-0`} />
+            <span className="text-xs text-gray-400">{indicator.label}</span>
+          </div>
+        )}
         {isOutOfBase && !isUser && (
           <div className="text-xs bg-orange-50 text-orange-700 border border-orange-200 rounded px-2 py-1 mb-2">
             Réponse hors des ressources du cours
