@@ -50,6 +50,7 @@ export default function SpaceDetail() {
   const [outOfBaseMode, setOutOfBaseMode] = useState('partiel');
   const [threshold, setThreshold] = useState(0.5);
   const [pedagogicalMode, setPedagogicalMode] = useState('direct');
+  const [relancesThreshold, setRelancesThreshold] = useState(5);
   const [niveau, setNiveau] = useState('');
   const [matiere, setMatiere] = useState('');
   const [flashDeckId, setFlashDeckId] = useState(null);
@@ -64,6 +65,7 @@ export default function SpaceDetail() {
           setOutOfBaseMode(data.out_of_base_mode);
           setThreshold(data.similarity_threshold ?? 0.5);
           setPedagogicalMode(data.pedagogical_mode ?? 'direct');
+          setRelancesThreshold(data.socratic_relances_threshold ?? 5);
           setNiveau(data.niveau ?? '');
           setMatiere(data.matiere ?? '');
           setFlashDeckId(data.flashcard_deck_id ?? null);
@@ -98,6 +100,11 @@ export default function SpaceDetail() {
   function handlePedagogicalMode(newMode) {
     setPedagogicalMode(newMode);
     saveField('pedagogical_mode', newMode);
+  }
+
+  function handleRelancesThreshold(value) {
+    setRelancesThreshold(value);
+    saveField('socratic_relances_threshold', value);
   }
 
   function handleNiveau(e) {
@@ -218,6 +225,34 @@ export default function SpaceDetail() {
               </button>
             </Tooltip>
           </div>
+          {pedagogicalMode === 'socratique' && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <p className="text-xs text-gray-500 mb-2">Rythme d'accompagnement</p>
+              <div className="flex gap-2">
+                {[
+                  { label: 'Rapide', value: 3, title: 'Drill, vocabulaire — indice après 3 relances' },
+                  { label: 'Standard', value: 5, title: 'Usage général — indice après 5 relances' },
+                  { label: 'Patient', value: 7, title: 'Exploration, raisonnement — indice après 7 relances' },
+                ].map(p => (
+                  <button
+                    key={p.value}
+                    onClick={() => handleRelancesThreshold(p.value)}
+                    title={p.title}
+                    className={`px-3 py-1 rounded-full border text-xs font-medium transition ${
+                      relancesThreshold === p.value
+                        ? 'bg-[#f97316] text-white border-[#f97316]'
+                        : 'text-gray-600 border-gray-300 hover:border-orange-400'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                Nombre de relances avant le premier indice : {relancesThreshold}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Contexte pédagogique */}
