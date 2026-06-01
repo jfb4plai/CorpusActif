@@ -28,14 +28,19 @@ export default function Chat() {
 
   useEffect(() => {
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+      const payload = JSON.parse(atob(padded));
       if (payload.learner_code) {
         setLearnerCode(payload.learner_code);
         setCodeSubmitted(true);
       }
       if (payload.space_name) setSpaceName(payload.space_name);
       if (payload.pedagogical_mode === 'socratique') setIsSocratic(true);
-    } catch {}
+    } catch (err) {
+      console.error('JWT decode error:', err);
+      setError('Token invalide — impossible de démarrer la session.');
+    }
   }, [token]);
 
   useEffect(() => {
@@ -44,7 +49,7 @@ export default function Chat() {
 
   async function sendMessage(e) {
     e.preventDefault();
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || input.trim().length > 1000) return;
 
     const question = input.trim();
     setInput('');
@@ -63,7 +68,7 @@ export default function Chat() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, question, history }),
+        body: JSON.stringify({ token, question, history, learner_code: learnerCode || null }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -79,6 +84,7 @@ export default function Chat() {
         content: displayContent,
         rawContent: rawAnswer,
         sources: data.sources,
+        chunksCount: data.chunks_count || 0,
         isOutOfBase: data.is_out_of_base,
         socraticLevel: data.pedagogical_mode === 'socratique' ? level : null,
       }]);
@@ -144,11 +150,16 @@ export default function Chat() {
         {error && <p className="text-center text-red-500 text-xs mb-4">{error}</p>}
         <div ref={bottomRef} />
       </div>
-      <form onSubmit={sendMessage} className="border-t bg-white px-4 py-3 flex gap-2 max-w-2xl mx-auto w-full">
+      <form onSubmit={sendMessage} className="border-t bg-white px-4 py-3 max-w-2xl mx-auto w-full">
+        {input.length >= 800 && (
+          <div className="text-right text-xs text-gray-400 mb-1">{input.length} / 1000</div>
+        )}
+        <div className="flex gap-2">
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="Pose ta question…"
+          maxLength={1000}
           className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
           disabled={loading}
         />
@@ -159,6 +170,7 @@ export default function Chat() {
         >
           Envoyer
         </button>
+        </div>
       </form>
     </div>
   );

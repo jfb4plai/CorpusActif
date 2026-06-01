@@ -4,7 +4,7 @@ const SOCRATIC_INDICATORS = {
   reponse: { color: 'bg-green-500', label: 'Réponse' },
 };
 
-export default function ChatMessage({ role, content, sources, isOutOfBase, socraticLevel }) {
+export default function ChatMessage({ role, content, sources, chunksCount, isOutOfBase, socraticLevel }) {
   const isUser = role === 'user';
   const indicator = socraticLevel ? SOCRATIC_INDICATORS[socraticLevel] : null;
 
@@ -31,6 +31,11 @@ export default function ChatMessage({ role, content, sources, isOutOfBase, socra
               <span key={i} className="inline-block text-xs text-gray-400 mr-2">📄 {s}</span>
             ))}
           </div>
+        )}
+        {!isUser && chunksCount > 0 && (
+          <p className="text-xs text-gray-300 mt-1">
+            {chunksCount} fragment{chunksCount > 1 ? 's' : ''} consulté{chunksCount > 1 ? 's' : ''}
+          </p>
         )}
       </div>
     </div>
