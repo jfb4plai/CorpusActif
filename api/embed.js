@@ -1,20 +1,47 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Client service role pour les écritures (documents/chunks)
 const supabase = createClient(
   process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-function chunkText(text, chunkSize = 3200, overlap = 400) {
+function splitAtSentences(text) {
+  return text.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 10);
+}
+
+function chunkText(text) {
+  const TARGET = 1200;
+  const MIN = 50;
+
+  const paragraphs = text.split(/\n\n+/).map(p => p.trim()).filter(p => p.length > MIN);
+
   const chunks = [];
-  let start = 0;
-  while (start < text.length) {
-    const end = Math.min(start + chunkSize, text.length);
-    const chunk = text.slice(start, end).trim();
-    if (chunk.length > 50) chunks.push(chunk);
-    if (end === text.length) break;
-    start += chunkSize - overlap;
+  let current = '';
+
+  for (const para of paragraphs) {
+    if (para.length > TARGET) {
+      if (current) { chunks.push(current.trim()); current = ''; }
+      const sentences = splitAtSentences(para);
+      let buf = '';
+      for (const s of sentences) {
+        if (buf && (buf + ' ' + s).length > TARGET) {
+          chunks.push(buf.trim());
+          buf = s;
+        } else {
+          buf = buf ? buf + ' ' + s : s;
+        }
+      }
+      if (buf.length > MIN) chunks.push(buf.trim());
+    } else if (current && (current + '\n\n' + para).length > TARGET) {
+      chunks.push(current.trim());
+      current = para;
+    } else {
+      current = current ? current + '\n\n' + para : para;
+    }
   }
+  if (current.length > MIN) chunks.push(current.trim());
+
   return chunks;
 }
 
@@ -38,10 +65,35 @@ async function embedBatch(texts) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  // Vérification d'autorisation
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authorization header requis' });
+  }
+  const token = authHeader.slice(7);
+
+  // Client avec le token utilisateur — RLS s'applique
+  const userClient = createClient(
+    process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+    process.env.VITE_SUPABASE_ANON_KEY,
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
+  );
+
   const { text, title, type, space_id, user_id } = req.body;
 
   if (!text || !title || !space_id || !user_id) {
     return res.status(400).json({ error: 'text, title, space_id, user_id requis' });
+  }
+
+  // Vérifier que l'utilisateur est propriétaire du space (RLS filtre automatiquement)
+  const { data: spaceCheck, error: spaceError } = await userClient
+    .from('spaces')
+    .select('id')
+    .eq('id', space_id)
+    .single();
+
+  if (spaceError || !spaceCheck) {
+    return res.status(403).json({ error: 'Accès refusé à cet espace' });
   }
 
   // Créer le document
