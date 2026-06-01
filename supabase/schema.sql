@@ -155,3 +155,7 @@ create table if not exists handoffs (
 alter table handoffs enable row level security;
 create policy "handoffs_owner" on handoffs
   for all using (auth.uid() = user_id);
+
+-- Lien vers le deck FlashFWB généré depuis cet espace
+alter table spaces
+  add column if not exists flashcard_deck_id uuid;
