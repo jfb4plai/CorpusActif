@@ -38,13 +38,16 @@ Langue : français. Registre enseignant concis. JSON uniquement.`,
       }],
     });
 
-    const parsed = JSON.parse(response.content[0].text.trim());
+    const raw = response.content[0].text.trim()
+      .replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+    const parsed = JSON.parse(raw);
     return {
       points_forts: parsed.points_forts || 'Participation à la conversation socratique.',
       difficultes: parsed.difficultes || 'Données insuffisantes pour identifier les blocages.',
       infos_complementaires: parsed.synthese || '',
     };
-  } catch {
+  } catch (err) {
+    console.error('[handoff] buildHandoffData failed:', err.message);
     return {
       points_forts: 'Participation à la conversation socratique.',
       difficultes: 'Données insuffisantes pour identifier les blocages.',
