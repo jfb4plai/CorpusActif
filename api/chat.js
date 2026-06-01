@@ -237,20 +237,21 @@ export default async function handler(req, res) {
 
   const answer = message.content[0].text;
 
-  // Stocker le message
-  await supabase.from('messages').insert({
+  // Stocker le message et récupérer son id pour le feedback
+  const { data: savedMessage } = await supabase.from('messages').insert({
     session_id: session.id,
     space_id,
     learner_code: learner_code || null,
     question,
     answer,
     is_out_of_base: isOutOfBase,
-  });
+  }).select('id').single();
 
   return res.status(200).json({
     answer,
     sources: documents.map(d => d.title),
     chunks_count: chunks?.length || 0,
+    message_id: savedMessage?.id || null,
     is_out_of_base: isOutOfBase,
     pedagogical_mode: pedagogicalMode,
   });
