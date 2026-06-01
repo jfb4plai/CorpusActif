@@ -133,3 +133,25 @@ alter table spaces
     check (similarity_threshold between 0.1 and 0.9),
   add column if not exists pedagogical_mode text not null default 'direct'
     check (pedagogical_mode in ('direct', 'socratique'));
+
+-- Migration : contexte pédagogique + passerelle RetroActif
+alter table spaces
+  add column if not exists niveau text,
+  add column if not exists matiere text;
+
+create table if not exists handoffs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users not null,
+  eleve_code text not null,
+  space_name text,
+  points_forts text not null,
+  difficultes text not null,
+  infos_complementaires text,
+  niveau text,
+  matiere text,
+  expires_at timestamptz not null default (now() + interval '24 hours'),
+  created_at timestamptz default now()
+);
+alter table handoffs enable row level security;
+create policy "handoffs_owner" on handoffs
+  for all using (auth.uid() = user_id);
