@@ -27,7 +27,7 @@ function buildDifficultes(messages) {
   const lines = [];
   for (let i = 0; i < messages.length; i++) {
     const m = messages[i];
-    if (m.role === 'assistant' && (m.answer?.startsWith('[INDICE]') || m.answer?.startsWith('[RÉPONSE]'))) {
+    if (m.role === 'assistant' && m.answer?.startsWith('[INDICE]')) {
       for (let j = i - 1; j >= 0; j--) {
         if (messages[j].role === 'user') {
           lines.push(`— ${messages[j].question}`);

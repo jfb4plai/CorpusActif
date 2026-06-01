@@ -98,10 +98,14 @@ export default function SpaceDetail() {
 
   function handleNiveau(e) {
     setNiveau(e.target.value);
+  }
+  function handleNiveauBlur(e) {
     saveField('niveau', e.target.value);
   }
   function handleMatiere(e) {
     setMatiere(e.target.value);
+  }
+  function handleMatiereBlur(e) {
     saveField('matiere', e.target.value);
   }
 
@@ -197,6 +201,7 @@ export default function SpaceDetail() {
               <input
                 value={niveau}
                 onChange={handleNiveau}
+                onBlur={handleNiveauBlur}
                 placeholder="Ex : 4e secondaire"
                 className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
@@ -206,6 +211,7 @@ export default function SpaceDetail() {
               <input
                 value={matiere}
                 onChange={handleMatiere}
+                onBlur={handleMatiereBlur}
                 placeholder="Ex : Français"
                 className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
