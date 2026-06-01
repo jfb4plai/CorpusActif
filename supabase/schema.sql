@@ -163,3 +163,8 @@ alter table spaces
 -- Signal de compréhension apprenant
 alter table messages
   add column if not exists helpful boolean;
+
+-- Seuil de relances avant indice (mode socratique)
+alter table spaces
+  add column if not exists socratic_relances_threshold int not null default 5
+    check (socratic_relances_threshold between 2 and 10);
