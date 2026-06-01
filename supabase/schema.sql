@@ -159,3 +159,7 @@ create policy "handoffs_owner" on handoffs
 -- Lien vers le deck FlashFWB généré depuis cet espace
 alter table spaces
   add column if not exists flashcard_deck_id uuid;
+
+-- Signal de compréhension apprenant
+alter table messages
+  add column if not exists helpful boolean;
