@@ -8,68 +8,48 @@ const supabaseService = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-function buildPointsForts(messages) {
-  const markers = ['bonne intuition', 'tu as bien identifié', 'tu avais raison sur', 'exactement', "c'est juste"];
-  const lines = [];
-  for (const m of messages) {
-    if (m.role === 'assistant' && m.answer?.startsWith('[RÉPONSE]')) {
-      const text = m.answer.replace(/^\[RÉPONSE\]\s*/u, '');
-      const found = markers.some(marker => text.toLowerCase().includes(marker));
-      if (found) lines.push(`— ${text.slice(0, 200)}`);
-    }
-  }
-  return lines.length > 0
-    ? lines.join('\n')
-    : 'Participation active à la conversation socratique.';
-}
-
-function buildDifficultes(messages) {
-  const lines = [];
-  for (let i = 0; i < messages.length; i++) {
-    const m = messages[i];
-    if (m.role === 'assistant' && m.answer?.startsWith('[INDICE]')) {
-      for (let j = i - 1; j >= 0; j--) {
-        if (messages[j].role === 'user') {
-          lines.push(`— ${messages[j].question}`);
-          break;
-        }
-      }
-    }
-  }
-  const unique = [...new Set(lines)];
-  return unique.length > 0
-    ? unique.join('\n')
-    : 'Aucun blocage identifié dans cette session.';
-}
-
-async function buildSynthese(learnerCode, messages) {
+async function buildHandoffData(learnerCode, messages) {
   const excerpt = messages
-    .slice(-20)
+    .slice(-30)
     .map(m => m.role === 'user'
       ? `Apprenant : ${m.question}`
-      : `Assistant : ${(m.answer || '').slice(0, 150)}`)
+      : `Assistant : ${(m.answer || '').replace(/^\[(INDICE|RÉPONSE)\]\s*/u, '').slice(0, 200)}`)
     .join('\n');
 
   try {
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 300,
+      max_tokens: 600,
       messages: [{
         role: 'user',
-        content: `Tu es un conseiller pédagogique. À partir de cette conversation socratique entre un assistant et l'apprenant ${learnerCode}, rédige en 3-4 phrases :
-- Ce que l'apprenant a compris et bien mobilisé
-- Ce qui a bloqué et nécessité un guidage
-- L'étape de consolidation prioritaire
+        content: `Analyse cette conversation socratique. Apprenant : ${learnerCode}.
+
+Réponds en JSON strict, sans texte avant ou après :
+{
+  "points_forts": "2-3 phrases sur ce que l'apprenant a compris ou bien formulé. Si rien de notable : Aucun acquis clairement identifiable dans cette session.",
+  "difficultes": "2-3 phrases sur les concepts qui ont bloqué et nécessité un guidage. Si aucun blocage : Aucun blocage identifié dans cette session.",
+  "synthese": "3-4 phrases narratives : ce qui est acquis, ce qui a bloqué, l'étape de consolidation prioritaire."
+}
 
 Conversation :
 ${excerpt}
 
-Langue : français. Pas de preamble. Registre enseignant, pas clinique.`,
+Langue : français. Registre enseignant concis. JSON uniquement.`,
       }],
     });
-    return response.content[0].text;
+
+    const parsed = JSON.parse(response.content[0].text.trim());
+    return {
+      points_forts: parsed.points_forts || 'Participation à la conversation socratique.',
+      difficultes: parsed.difficultes || 'Données insuffisantes pour identifier les blocages.',
+      infos_complementaires: parsed.synthese || '',
+    };
   } catch {
-    return '';
+    return {
+      points_forts: 'Participation à la conversation socratique.',
+      difficultes: 'Données insuffisantes pour identifier les blocages.',
+      infos_complementaires: '',
+    };
   }
 }
 
@@ -118,9 +98,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Aucune conversation disponible pour cet apprenant' });
   }
 
-  const points_forts = buildPointsForts(messages);
-  const difficultes = buildDifficultes(messages);
-  const infos_complementaires = await buildSynthese(learner_code, messages);
+  const { points_forts, difficultes, infos_complementaires } = await buildHandoffData(learner_code, messages);
 
   // Récupérer l'user_id depuis le token
   const { data: { user } } = await userClient.auth.getUser();
