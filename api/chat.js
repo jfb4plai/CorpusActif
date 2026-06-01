@@ -238,7 +238,7 @@ export default async function handler(req, res) {
   const answer = message.content[0].text;
 
   // Stocker le message et récupérer son id pour le feedback
-  const { data: savedMessage } = await supabase.from('messages').insert({
+  const { data: savedMessage, error: insertError } = await supabase.from('messages').insert({
     session_id: session.id,
     space_id,
     learner_code: learner_code || null,
@@ -246,6 +246,8 @@ export default async function handler(req, res) {
     answer,
     is_out_of_base: isOutOfBase,
   }).select('id').single();
+
+  if (insertError) console.error('[chat] message insert failed:', insertError.message);
 
   return res.status(200).json({
     answer,

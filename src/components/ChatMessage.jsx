@@ -7,6 +7,8 @@ const SOCRATIC_INDICATORS = {
 };
 
 export default function ChatMessage({ role, content, sources, chunksCount, isOutOfBase, socraticLevel, onFeedback }) {
+  // feedbackSent est éphémère — si les messages sont chargés depuis la DB au montage,
+  // dériver l'état initial depuis m.helpful !== null
   const [feedbackSent, setFeedbackSent] = useState(false);
   const isUser = role === 'user';
   const indicator = socraticLevel ? SOCRATIC_INDICATORS[socraticLevel] : null;
@@ -43,6 +45,7 @@ export default function ChatMessage({ role, content, sources, chunksCount, isOut
         {!isUser && onFeedback && !feedbackSent && (
           <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
             <button
+              type="button"
               onClick={() => { onFeedback(true); setFeedbackSent(true); }}
               className="text-xs text-gray-400 hover:text-teal-600 transition"
               title="Cette réponse m'a aidé"
@@ -50,6 +53,7 @@ export default function ChatMessage({ role, content, sources, chunksCount, isOut
               ✓ Utile
             </button>
             <button
+              type="button"
               onClick={() => { onFeedback(false); setFeedbackSent(true); }}
               className="text-xs text-gray-400 hover:text-red-400 transition"
               title="Cette réponse n'était pas claire"
