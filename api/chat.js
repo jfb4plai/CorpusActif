@@ -56,7 +56,7 @@ Langue : français. Pas de preamble. Réponses courtes et directes.
 Si tu cites une information, indique le titre du document source entre crochets.`;
 }
 
-function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, history, curriculumNodes = [], previousSessionMessages = []) {
+function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, history, curriculumNodes = [], previousSessionMessages = [], relancesThreshold = 5) {
   const docMap = Object.fromEntries(documents.map(d => [d.id, d.title]));
   const contextBlocks = chunks.map(c =>
     `[Source : ${docMap[c.document_id] || 'Document'}]\n${c.content}`
@@ -100,8 +100,8 @@ ${modeInstruction}
 Règles de progression (OBLIGATOIRES — tu DOIS respecter ces marqueurs de début de réponse) :
 - Relances effectuées : ${relancesCount} / Indices donnés : ${indicesCount} / Relances depuis dernier indice : ${relancesSinceLastIndice}
 
-- Si indices < 1 et relances < 5 : pose une question de relance courte, ancrée dans les ressources. Commence sans marqueur.
-- Si relances >= 5 et indices < 1 : commence OBLIGATOIREMENT par [INDICE] suivi d'un indice concret tiré des ressources.
+- Si indices < 1 et relances < ${relancesThreshold} : pose une question de relance courte, ancrée dans les ressources. Commence sans marqueur.
+- Si relances >= ${relancesThreshold} et indices < 1 : commence OBLIGATOIREMENT par [INDICE] suivi d'un indice concret tiré des ressources.
 - Si indices >= 1 et relancesSinceLastIndice >= 2 et indices < 2 : commence OBLIGATOIREMENT par [INDICE] suivi d'un second indice.
 - Si indices >= 2 et relancesSinceLastIndice >= 2 : commence OBLIGATOIREMENT par [RÉPONSE], donne la réponse complète, identifie explicitement la dernière bonne intuition ou réponse partielle de l'apprenant dans la conversation, et explique le lien ou l'étape qu'il doit encore consolider.
 
@@ -151,7 +151,7 @@ export default async function handler(req, res) {
   // Charger l'espace (avec les nouveaux champs)
   const { data: space } = await supabase
     .from('spaces')
-    .select('name, out_of_base_mode, similarity_threshold, pedagogical_mode')
+    .select('name, out_of_base_mode, similarity_threshold, pedagogical_mode, socratic_relances_threshold')
     .eq('id', space_id)
     .single();
 
@@ -159,6 +159,7 @@ export default async function handler(req, res) {
 
   const threshold = space.similarity_threshold ?? 0.5;
   const pedagogicalMode = space.pedagogical_mode ?? 'direct';
+  const relancesThreshold = space.socratic_relances_threshold ?? 5;
 
   // Charger le curriculum si mode socratique et nœuds définis
   let curriculumNodes = [];
@@ -216,7 +217,7 @@ export default async function handler(req, res) {
 
   // Choisir le prompt selon le mode pédagogique
   const systemPrompt = pedagogicalMode === 'socratique'
-    ? buildSocraticPrompt(space.name, chunks || [], space.out_of_base_mode, documents, history, curriculumNodes, previousSessionMessages)
+    ? buildSocraticPrompt(space.name, chunks || [], space.out_of_base_mode, documents, history, curriculumNodes, previousSessionMessages, relancesThreshold)
     : buildDirectPrompt(space.name, chunks || [], space.out_of_base_mode, documents);
 
   // Construire les messages avec historique (mode socratique)
