@@ -4,14 +4,17 @@ import { supabase } from '../../lib/supabase';
 export default function Dashboard({ spaceId }) {
   const [stats, setStats] = useState(null);
   const [byCode, setByCode] = useState([]);
+  const [handoffLoading, setHandoffLoading] = useState(null);
+  const [handoffError, setHandoffError] = useState('');
 
   useEffect(() => {
     async function load() {
       const { data: messages } = await supabase
         .from('messages')
-        .select('learner_code, question, is_out_of_base, created_at')
+        .select('learner_code, question, answer, is_out_of_base, created_at')
         .eq('space_id', spaceId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (!messages) return;
 
@@ -22,22 +25,51 @@ export default function Dashboard({ spaceId }) {
       const codeMap = {};
       messages.forEach(m => {
         const code = m.learner_code || '(sans code)';
-        if (!codeMap[code]) codeMap[code] = { total: 0, out: 0, questions: [] };
+        if (!codeMap[code]) codeMap[code] = { total: 0, out: 0, questions: [], blocages: 0 };
         codeMap[code].total++;
         if (m.is_out_of_base) codeMap[code].out++;
         codeMap[code].questions.push(m.question);
+        if (m.answer && (m.answer.startsWith('[INDICE]') || m.answer.startsWith('[RÉPONSE]'))) {
+          codeMap[code].blocages++;
+        }
       });
 
-      setStats({ total, outOfBase });
+      setStats({ total, outOfBase, truncated: messages.length === 500 });
       setByCode(Object.entries(codeMap).sort((a, b) => b[1].total - a[1].total));
     }
     load();
   }, [spaceId]);
 
+  async function sendToRetroactif(code) {
+    setHandoffLoading(code);
+    setHandoffError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/handoff', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ space_id: spaceId, learner_code: code }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      window.open(data.url, '_blank');
+    } catch (err) {
+      setHandoffError(`${code} : ${err.message}`);
+    } finally {
+      setHandoffLoading(null);
+    }
+  }
+
   if (!stats) return <p className="text-sm text-gray-400">Chargement…</p>;
 
   return (
     <div className="space-y-6">
+      {stats.truncated && (
+        <p className="text-xs text-amber-600">Affichage limité aux 500 derniers messages.</p>
+      )}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <StatCard label="Questions totales" value={stats.total} />
         <StatCard label="Hors-base" value={stats.outOfBase} sub={`${stats.total ? Math.round(stats.outOfBase / stats.total * 100) : 0}%`} />
@@ -45,16 +77,35 @@ export default function Dashboard({ spaceId }) {
       </div>
 
       <div>
+        {handoffError && (
+          <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded px-3 py-2">
+            {handoffError}
+          </p>
+        )}
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Par code apprenant</h3>
         <div className="space-y-2">
           {byCode.map(([code, data]) => (
             <details key={code} className="bg-white border rounded-lg">
               <summary className="flex items-center justify-between px-4 py-3 cursor-pointer text-sm">
                 <span className="font-medium text-gray-800">{code}</span>
-                <span className="text-xs text-gray-400">
-                  {data.total} question{data.total > 1 ? 's' : ''}
-                  {data.out > 0 && <span className="ml-2 text-orange-500">{data.out} hors-base</span>}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400">
+                    {data.total} question{data.total > 1 ? 's' : ''}
+                    {data.out > 0 && <span className="ml-2 text-orange-500">{data.out} hors-base</span>}
+                  </span>
+                  {data.blocages > 0 && (
+                    <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-2 py-0.5">
+                      {data.blocages} blocage{data.blocages > 1 ? 's' : ''}
+                    </span>
+                  )}
+                  <button
+                    onClick={e => { e.preventDefault(); sendToRetroactif(code); }}
+                    disabled={handoffLoading === code}
+                    className="text-xs border border-[#0a9370] text-[#0a9370] px-2 py-0.5 rounded hover:bg-teal-50 disabled:opacity-50 shrink-0"
+                  >
+                    {handoffLoading === code ? '…' : '→ RetroActif'}
+                  </button>
+                </div>
               </summary>
               <div className="px-4 pb-3 space-y-1 border-t">
                 {data.questions.slice(0, 10).map((q, i) => (
