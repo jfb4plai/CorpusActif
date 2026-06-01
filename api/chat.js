@@ -56,7 +56,7 @@ Langue : français. Pas de preamble. Réponses courtes et directes.
 Si tu cites une information, indique le titre du document source entre crochets.`;
 }
 
-function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, history, curriculumNodes = []) {
+function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, history, curriculumNodes = [], previousSessionMessages = []) {
   const docMap = Object.fromEntries(documents.map(d => [d.id, d.title]));
   const contextBlocks = chunks.map(c =>
     `[Source : ${docMap[c.document_id] || 'Document'}]\n${c.content}`
@@ -78,9 +78,19 @@ function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, histor
       }\n\nOriente tes questions vers ces concepts lorsqu'ils sont pertinents à ce que l'apprenant explore.\n`
     : '';
 
+  const historySection = previousSessionMessages.length > 0
+    ? `\nContexte des sessions précédentes de cet apprenant (pour information uniquement — la progression relances/indices repart de zéro pour cette session) :\n${
+        previousSessionMessages
+          .map(m => m.role === 'user'
+            ? `Apprenant : ${m.content}`
+            : `Assistant : ${m.content.replace(/^\[(INDICE|RÉPONSE)\]\s*/u, '').slice(0, 150)}`)
+          .join('\n')
+      }\n`
+    : '';
+
   return `Tu es un assistant pédagogique socratique pour l'espace "${spaceName}".
 Tu guides l'apprenant vers la réponse par des questions ancrées dans les ressources.
-${curriculumSection}
+${curriculumSection}${historySection}
 Ressources disponibles :
 
 ${contextBlocks}
@@ -161,6 +171,25 @@ export default async function handler(req, res) {
     curriculumNodes = nodes || [];
   }
 
+  // Charger l'historique inter-sessions (mode socratique uniquement)
+  let previousSessionMessages = [];
+  if (pedagogicalMode === 'socratique' && learner_code) {
+    const { data: prevMsgs } = await supabase
+      .from('messages')
+      .select('question, answer')
+      .eq('space_id', space_id)
+      .eq('learner_code', learner_code)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    previousSessionMessages = (prevMsgs || [])
+      .reverse()
+      .flatMap(m => [
+        { role: 'user', content: m.question },
+        { role: 'assistant', content: m.answer },
+      ]);
+  }
+
   // Vectoriser la question
   const queryEmbedding = await embedQuery(question);
 
@@ -187,12 +216,16 @@ export default async function handler(req, res) {
 
   // Choisir le prompt selon le mode pédagogique
   const systemPrompt = pedagogicalMode === 'socratique'
-    ? buildSocraticPrompt(space.name, chunks || [], space.out_of_base_mode, documents, history, curriculumNodes)
+    ? buildSocraticPrompt(space.name, chunks || [], space.out_of_base_mode, documents, history, curriculumNodes, previousSessionMessages)
     : buildDirectPrompt(space.name, chunks || [], space.out_of_base_mode, documents);
 
   // Construire les messages avec historique (mode socratique)
-  const conversationMessages = pedagogicalMode === 'socratique' && history.length > 0
-    ? [...history, { role: 'user', content: question }]
+  const conversationMessages = pedagogicalMode === 'socratique'
+    ? [
+        ...previousSessionMessages,
+        ...(history.length > 0 ? history : []),
+        { role: 'user', content: question },
+      ]
     : [{ role: 'user', content: question }];
 
   const message = await anthropic.messages.create({
