@@ -78,7 +78,7 @@ export default async function handler(req, res) {
 
   const corpusText = (chunks || []).length > 0
     ? `EXTRAITS DU CORPUS :\n${
-        chunks.slice(0, 10).map(c => c.content.slice(0, 300)).join('\n---\n')
+        chunks.map(c => c.content.slice(0, 300)).join('\n---\n')
       }`
     : '';
 
