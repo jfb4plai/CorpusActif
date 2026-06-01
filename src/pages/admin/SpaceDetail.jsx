@@ -50,6 +50,8 @@ export default function SpaceDetail() {
   const [outOfBaseMode, setOutOfBaseMode] = useState('partiel');
   const [threshold, setThreshold] = useState(0.5);
   const [pedagogicalMode, setPedagogicalMode] = useState('direct');
+  const [niveau, setNiveau] = useState('');
+  const [matiere, setMatiere] = useState('');
 
   useEffect(() => {
     supabase.from('spaces').select('*').eq('id', spaceId).single()
@@ -59,6 +61,8 @@ export default function SpaceDetail() {
           setOutOfBaseMode(data.out_of_base_mode);
           setThreshold(data.similarity_threshold ?? 0.5);
           setPedagogicalMode(data.pedagogical_mode ?? 'direct');
+          setNiveau(data.niveau ?? '');
+          setMatiere(data.matiere ?? '');
         }
       });
   }, [spaceId]);
@@ -90,6 +94,15 @@ export default function SpaceDetail() {
   function handlePedagogicalMode(newMode) {
     setPedagogicalMode(newMode);
     saveField('pedagogical_mode', newMode);
+  }
+
+  function handleNiveau(e) {
+    setNiveau(e.target.value);
+    saveField('niveau', e.target.value);
+  }
+  function handleMatiere(e) {
+    setMatiere(e.target.value);
+    saveField('matiere', e.target.value);
   }
 
   if (!space) return null;
@@ -171,6 +184,32 @@ export default function SpaceDetail() {
                 Socratique ⓘ
               </button>
             </Tooltip>
+          </div>
+        </div>
+
+        {/* Contexte pédagogique */}
+        <div className="bg-white border rounded-lg p-4 mt-4">
+          <p className="text-sm font-medium text-gray-700 mb-3">Contexte pédagogique</p>
+          <p className="text-xs text-gray-400 mb-3">Utilisé pour la passerelle vers RetroActif.</p>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="text-xs text-gray-500 block mb-1">Niveau</label>
+              <input
+                value={niveau}
+                onChange={handleNiveau}
+                placeholder="Ex : 4e secondaire"
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-gray-500 block mb-1">Matière</label>
+              <input
+                value={matiere}
+                onChange={handleMatiere}
+                placeholder="Ex : Français"
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
           </div>
         </div>
       </div>
