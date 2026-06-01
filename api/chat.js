@@ -56,7 +56,7 @@ Langue : français. Pas de preamble. Réponses courtes et directes.
 Si tu cites une information, indique le titre du document source entre crochets.`;
 }
 
-function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, history) {
+function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, history, curriculumNodes = []) {
   const docMap = Object.fromEntries(documents.map(d => [d.id, d.title]));
   const contextBlocks = chunks.map(c =>
     `[Source : ${docMap[c.document_id] || 'Document'}]\n${c.content}`
@@ -70,9 +70,17 @@ function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, histor
 
   const { relancesCount, indicesCount, relancesSinceLastIndice } = analyzeHistory(history);
 
+  const curriculumSection = curriculumNodes.length > 0
+    ? `\nConceptes du curriculum de cet espace :\n${
+        curriculumNodes.map(n =>
+          `- ${n.concept}${n.definition ? ` : ${n.definition}` : ''}${n.level ? ` (${n.level})` : ''}`
+        ).join('\n')
+      }\n\nOriente tes questions vers ces concepts lorsqu'ils sont pertinents à ce que l'apprenant explore.\n`
+    : '';
+
   return `Tu es un assistant pédagogique socratique pour l'espace "${spaceName}".
 Tu guides l'apprenant vers la réponse par des questions ancrées dans les ressources.
-
+${curriculumSection}
 Ressources disponibles :
 
 ${contextBlocks}
@@ -106,7 +114,7 @@ async function embedQuery(text) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { token, question, history = [] } = req.body;
+  const { token, question, history = [], learner_code: bodyLearnerCode } = req.body;
   if (!token || !question) return res.status(400).json({ error: 'token et question requis' });
 
   // Valider le JWT
@@ -118,7 +126,17 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Token invalide ou expiré' });
   }
 
-  const { space_id, learner_code } = payload;
+  const { space_id, learner_code: tokenLearnerCode } = payload;
+  const learner_code = bodyLearnerCode || tokenLearnerCode || null;
+
+  // Récupérer la session par son token (vérifie existence et non-révocation)
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('id')
+    .eq('token', token)
+    .single();
+
+  if (!session) return res.status(401).json({ error: 'Session expirée ou révoquée' });
 
   // Charger l'espace (avec les nouveaux champs)
   const { data: space } = await supabase
@@ -131,6 +149,17 @@ export default async function handler(req, res) {
 
   const threshold = space.similarity_threshold ?? 0.5;
   const pedagogicalMode = space.pedagogical_mode ?? 'direct';
+
+  // Charger le curriculum si mode socratique et nœuds définis
+  let curriculumNodes = [];
+  if (pedagogicalMode === 'socratique') {
+    const { data: nodes } = await supabase
+      .from('curriculum_nodes')
+      .select('concept, definition, level')
+      .eq('space_id', space_id)
+      .order('created_at');
+    curriculumNodes = nodes || [];
+  }
 
   // Vectoriser la question
   const queryEmbedding = await embedQuery(question);
@@ -158,7 +187,7 @@ export default async function handler(req, res) {
 
   // Choisir le prompt selon le mode pédagogique
   const systemPrompt = pedagogicalMode === 'socratique'
-    ? buildSocraticPrompt(space.name, chunks || [], space.out_of_base_mode, documents, history)
+    ? buildSocraticPrompt(space.name, chunks || [], space.out_of_base_mode, documents, history, curriculumNodes)
     : buildDirectPrompt(space.name, chunks || [], space.out_of_base_mode, documents);
 
   // Construire les messages avec historique (mode socratique)
@@ -177,7 +206,7 @@ export default async function handler(req, res) {
 
   // Stocker le message
   await supabase.from('messages').insert({
-    session_id: null,
+    session_id: session.id,
     space_id,
     learner_code: learner_code || null,
     question,
@@ -188,6 +217,7 @@ export default async function handler(req, res) {
   return res.status(200).json({
     answer,
     sources: documents.map(d => d.title),
+    chunks_count: chunks?.length || 0,
     is_out_of_base: isOutOfBase,
     pedagogical_mode: pedagogicalMode,
   });
