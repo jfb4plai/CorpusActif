@@ -52,6 +52,9 @@ export default function SpaceDetail() {
   const [pedagogicalMode, setPedagogicalMode] = useState('direct');
   const [niveau, setNiveau] = useState('');
   const [matiere, setMatiere] = useState('');
+  const [flashDeckId, setFlashDeckId] = useState(null);
+  const [flashGenerating, setFlashGenerating] = useState(false);
+  const [flashResult, setFlashResult] = useState(null);
 
   useEffect(() => {
     supabase.from('spaces').select('*').eq('id', spaceId).single()
@@ -63,6 +66,7 @@ export default function SpaceDetail() {
           setPedagogicalMode(data.pedagogical_mode ?? 'direct');
           setNiveau(data.niveau ?? '');
           setMatiere(data.matiere ?? '');
+          setFlashDeckId(data.flashcard_deck_id ?? null);
         }
       });
   }, [spaceId]);
@@ -107,6 +111,30 @@ export default function SpaceDetail() {
   }
   function handleMatiereBlur(e) {
     saveField('matiere', e.target.value);
+  }
+
+  async function generateFlashDeck() {
+    setFlashGenerating(true);
+    setFlashResult(null);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const res = await fetch('/api/generate-flashcards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession.access_token}`,
+        },
+        body: JSON.stringify({ space_id: spaceId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setFlashDeckId(data.deck_id);
+      setFlashResult({ cards_created: data.cards_created, cards_existing: data.cards_existing });
+    } catch (err) {
+      setFlashResult({ error: err.message });
+    } finally {
+      setFlashGenerating(false);
+    }
   }
 
   if (!space) return null;
@@ -216,6 +244,43 @@ export default function SpaceDetail() {
                 className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
+          </div>
+          {/* Deck FlashFWB */}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-gray-600">Deck FlashFWB</p>
+              {flashDeckId && (
+                <a
+                  href="https://flashfwb-cd2m.vercel.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[#0a9370] hover:underline"
+                >
+                  Ouvrir FlashFWB →
+                </a>
+              )}
+            </div>
+            <button
+              onClick={generateFlashDeck}
+              disabled={flashGenerating}
+              className="w-full text-xs border border-[#0a9370] text-[#0a9370] px-3 py-2 rounded hover:bg-teal-50 disabled:opacity-50"
+            >
+              {flashGenerating
+                ? 'Génération en cours…'
+                : flashDeckId
+                  ? 'Mettre à jour le deck'
+                  : 'Créer le deck FlashFWB'}
+            </button>
+            {flashResult && !flashResult.error && (
+              <p className="text-xs text-teal-700 mt-2">
+                {flashResult.cards_created} carte{flashResult.cards_created !== 1 ? 's' : ''} créée{flashResult.cards_created !== 1 ? 's' : ''}
+                {flashResult.cards_existing > 0 && `, ${flashResult.cards_existing} déjà présente${flashResult.cards_existing !== 1 ? 's' : ''}`}
+                {flashResult.cards_created === 0 && flashResult.cards_existing > 0 && ' — deck déjà à jour'}
+              </p>
+            )}
+            {flashResult?.error && (
+              <p className="text-xs text-red-500 mt-2">{flashResult.error}</p>
+            )}
           </div>
         </div>
       </div>
