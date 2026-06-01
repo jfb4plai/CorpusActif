@@ -11,7 +11,7 @@ export default function Dashboard({ spaceId }) {
     async function load() {
       const { data: messages } = await supabase
         .from('messages')
-        .select('learner_code, question, answer, is_out_of_base, created_at')
+        .select('learner_code, question, answer, is_out_of_base, helpful, created_at')
         .eq('space_id', spaceId)
         .order('created_at', { ascending: false })
         .limit(500);
@@ -25,13 +25,16 @@ export default function Dashboard({ spaceId }) {
       const codeMap = {};
       messages.forEach(m => {
         const code = m.learner_code || '(sans code)';
-        if (!codeMap[code]) codeMap[code] = { total: 0, out: 0, questions: [], blocages: 0 };
+        if (!codeMap[code]) codeMap[code] = { total: 0, out: 0, questions: [], blocages: 0, helpful: 0, notHelpful: 0, feedbackCount: 0 };
         codeMap[code].total++;
         if (m.is_out_of_base) codeMap[code].out++;
         codeMap[code].questions.push(m.question);
         if (m.answer && (m.answer.startsWith('[INDICE]') || m.answer.startsWith('[RÉPONSE]'))) {
           codeMap[code].blocages++;
         }
+        if (m.helpful === true) codeMap[code].helpful++;
+        if (m.helpful === false) codeMap[code].notHelpful++;
+        if (m.helpful !== null && m.helpful !== undefined) codeMap[code].feedbackCount++;
       });
 
       setStats({ total, outOfBase, truncated: messages.length === 500 });
@@ -96,6 +99,11 @@ export default function Dashboard({ spaceId }) {
                   {data.blocages > 0 && (
                     <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-2 py-0.5">
                       {data.blocages} blocage{data.blocages > 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {data.feedbackCount > 0 && (
+                    <span className="text-xs text-gray-400">
+                      {Math.round(data.helpful / data.feedbackCount * 100)}% utile
                     </span>
                   )}
                   <button
