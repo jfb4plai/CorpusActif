@@ -118,6 +118,7 @@ export default function SpaceDetail() {
     setFlashResult(null);
     try {
       const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession) throw new Error('Session expirée — reconnectez-vous');
       const res = await fetch('/api/generate-flashcards', {
         method: 'POST',
         headers: {

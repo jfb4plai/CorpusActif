@@ -90,7 +90,7 @@ export default async function handler(req, res) {
   try {
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1200,
+      max_tokens: 2048,
       messages: [{
         role: 'user',
         content: `Tu es un expert en mémorisation espacée. Génère des cartes mémoire pour l'espace pédagogique "${space.name}".
@@ -150,10 +150,11 @@ Langue : français. JSON uniquement.`,
     deckId = deck.id;
 
     // Persister le lien dans l'espace
-    await supabaseService
+    const { error: linkError } = await supabaseService
       .from('spaces')
       .update({ flashcard_deck_id: deckId })
       .eq('id', space_id);
+    if (linkError) return res.status(500).json({ error: linkError.message });
   }
 
   // === Fusion : charger questions existantes ===
