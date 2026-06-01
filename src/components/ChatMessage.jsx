@@ -1,10 +1,13 @@
+import { useState } from 'react';
+
 const SOCRATIC_INDICATORS = {
   relance: { color: 'bg-[#0a9370]', label: 'Question' },
   indice: { color: 'bg-[#f97316]', label: 'Indice' },
   reponse: { color: 'bg-green-500', label: 'Réponse' },
 };
 
-export default function ChatMessage({ role, content, sources, chunksCount, isOutOfBase, socraticLevel }) {
+export default function ChatMessage({ role, content, sources, chunksCount, isOutOfBase, socraticLevel, onFeedback }) {
+  const [feedbackSent, setFeedbackSent] = useState(false);
   const isUser = role === 'user';
   const indicator = socraticLevel ? SOCRATIC_INDICATORS[socraticLevel] : null;
 
@@ -36,6 +39,27 @@ export default function ChatMessage({ role, content, sources, chunksCount, isOut
           <p className="text-xs text-gray-300 mt-1">
             {chunksCount} fragment{chunksCount > 1 ? 's' : ''} consulté{chunksCount > 1 ? 's' : ''}
           </p>
+        )}
+        {!isUser && onFeedback && !feedbackSent && (
+          <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
+            <button
+              onClick={() => { onFeedback(true); setFeedbackSent(true); }}
+              className="text-xs text-gray-400 hover:text-teal-600 transition"
+              title="Cette réponse m'a aidé"
+            >
+              ✓ Utile
+            </button>
+            <button
+              onClick={() => { onFeedback(false); setFeedbackSent(true); }}
+              className="text-xs text-gray-400 hover:text-red-400 transition"
+              title="Cette réponse n'était pas claire"
+            >
+              ✗ Pas clair
+            </button>
+          </div>
+        )}
+        {!isUser && onFeedback && feedbackSent && (
+          <p className="text-xs text-gray-300 mt-2">Merci pour ton retour.</p>
         )}
       </div>
     </div>

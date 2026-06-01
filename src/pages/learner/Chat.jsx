@@ -85,6 +85,8 @@ export default function Chat() {
         rawContent: rawAnswer,
         sources: data.sources,
         chunksCount: data.chunks_count || 0,
+        messageId: data.message_id || null,
+        showFeedback: data.pedagogical_mode !== 'socratique',
         isOutOfBase: data.is_out_of_base,
         socraticLevel: data.pedagogical_mode === 'socratique' ? level : null,
       }]);
@@ -92,6 +94,18 @@ export default function Chat() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function sendFeedback(messageId, helpful) {
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, message_id: messageId, helpful }),
+      });
+    } catch {
+      // feedback silencieux — ne bloque pas le chat
     }
   }
 
@@ -140,7 +154,13 @@ export default function Chat() {
           </div>
         )}
         {messages.map((m, i) => (
-          <ChatMessage key={i} {...m} />
+          <ChatMessage
+            key={i}
+            {...m}
+            onFeedback={m.showFeedback && m.messageId
+              ? (helpful) => sendFeedback(m.messageId, helpful)
+              : null}
+          />
         ))}
         {loading && (
           <div className="flex justify-start mb-4">
