@@ -7,7 +7,8 @@ const supabase = createClient(
 );
 
 function splitAtSentences(text) {
-  return text.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 10);
+  // Threshold 3 preserves short but valid sentences ("Oui.", "Non.") while still filtering noise
+  return text.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 3);
 }
 
 function chunkText(text) {
