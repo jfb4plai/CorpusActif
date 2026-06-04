@@ -56,7 +56,7 @@ Langue : français. Pas de preamble. Réponses courtes et directes.
 Si tu cites une information, indique le titre du document source entre crochets.`;
 }
 
-function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, history, curriculumNodes = [], previousSessionMessages = [], relancesThreshold = 5) {
+function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, history, curriculumNodes = [], previousSessionMessages = [], relancesThreshold = 5, notionConcept = null, notionTotal = 0, notionIndex = 0) {
   const docMap = Object.fromEntries(documents.map(d => [d.id, d.title]));
   const contextBlocks = chunks.map(c =>
     `[Source : ${docMap[c.document_id] || 'Document'}]\n${c.content}`
@@ -78,6 +78,13 @@ function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, histor
       }\n\nOriente tes questions vers ces concepts lorsqu'ils sont pertinents à ce que l'apprenant explore.\n`
     : '';
 
+  const notionSection = notionConcept
+    ? `\nNotion en cours d'exploration (${notionIndex + 1}/${notionTotal}) : "${notionConcept}".
+Tu guides l'apprenant UNIQUEMENT sur cette notion.
+Si sa question porte sur une autre notion, réponds très brièvement et ramène-le à "${notionConcept}".
+Quand tu estimes que l'apprenant a compris cette notion, commence OBLIGATOIREMENT ta réponse par [NOTION_SUIVANTE] suivi d'une phrase valorisant ce qu'il a compris.\n`
+    : '';
+
   const historySection = previousSessionMessages.length > 0
     ? `\nContexte des sessions précédentes de cet apprenant (pour information uniquement — la progression relances/indices repart de zéro pour cette session) :\n${
         previousSessionMessages
@@ -90,7 +97,7 @@ function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, histor
 
   return `Tu es un assistant pédagogique socratique pour l'espace "${spaceName}".
 Tu guides l'apprenant vers la réponse par des questions ancrées dans les ressources.
-${curriculumSection}${historySection}
+${curriculumSection}${historySection}${notionSection}
 Ressources disponibles :
 
 ${contextBlocks}
@@ -124,7 +131,13 @@ async function embedQuery(text) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { token, question, history = [], learner_code: bodyLearnerCode } = req.body;
+  const {
+  token, question, history = [],
+  learner_code: bodyLearnerCode,
+  notion_concept = null,
+  notion_index = 0,
+  notion_total = 0,
+} = req.body;
   if (!token || !question) return res.status(400).json({ error: 'token et question requis' });
 
   // Valider le JWT
@@ -217,7 +230,7 @@ export default async function handler(req, res) {
 
   // Choisir le prompt selon le mode pédagogique
   const systemPrompt = pedagogicalMode === 'socratique'
-    ? buildSocraticPrompt(space.name, chunks || [], space.out_of_base_mode, documents, history, curriculumNodes, previousSessionMessages, relancesThreshold)
+    ? buildSocraticPrompt(space.name, chunks || [], space.out_of_base_mode, documents, history, curriculumNodes, previousSessionMessages, relancesThreshold, notion_concept, notion_total, notion_index)
     : buildDirectPrompt(space.name, chunks || [], space.out_of_base_mode, documents);
 
   // Construire les messages avec historique (mode socratique)
@@ -246,6 +259,10 @@ export default async function handler(req, res) {
     question,
     answer,
     is_out_of_base: isOutOfBase,
+    notion_concept: notion_concept || null,
+    notion_acquired: notion_concept
+      ? answer.startsWith('[NOTION_SUIVANTE]')
+      : null,
   }).select('id').single();
 
   if (insertError) console.error('[chat] message insert failed:', insertError.message);
