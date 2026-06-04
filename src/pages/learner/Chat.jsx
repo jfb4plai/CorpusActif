@@ -4,7 +4,7 @@ import ChatMessage from '../../components/ChatMessage';
 
 // Retire les marqueurs [INDICE] et [RÉPONSE] du texte affiché
 function stripMarker(content) {
-  return content.replace(/^\[(INDICE|RÉPONSE)\]\s*/u, '');
+  return content.replace(/^\[(INDICE|RÉPONSE|NOTION_SUIVANTE)\]\s*/u, '');
 }
 
 // Détermine le niveau socratique d'un message assistant
@@ -24,6 +24,9 @@ export default function Chat() {
   const [codeSubmitted, setCodeSubmitted] = useState(false);
   const [isSocratic, setIsSocratic] = useState(false);
   const [spaceName, setSpaceName] = useState('');
+  const [notions, setNotions] = useState([]);
+  const [notionIndex, setNotionIndex] = useState(0);
+  const [sessionReady, setSessionReady] = useState(false);
   const bottomRef = useRef();
 
   useEffect(() => {
@@ -47,6 +50,35 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    if (!codeSubmitted || !isSocratic) { setSessionReady(true); return; }
+
+    fetch('/api/chat-init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.notions && data.notions.length > 0) {
+          setNotions(data.notions);
+          setMessages([{
+            role: 'assistant',
+            content: `Ce parcours comporte ${data.total} notion${data.total > 1 ? 's' : ''}. Commençons.`,
+            rawContent: `Ce parcours comporte ${data.total} notion${data.total > 1 ? 's' : ''}. Commençons.`,
+            isIntro: true,
+          }]);
+          setTimeout(() => {
+            openNotion(data.notions, 0);
+            setSessionReady(true);
+          }, 600);
+        } else {
+          setSessionReady(true);
+        }
+      })
+      .catch(() => setSessionReady(true));
+  }, [codeSubmitted, isSocratic]);
+
   async function sendMessage(e) {
     e.preventDefault();
     if (!input.trim() || loading || input.trim().length > 1000) return;
@@ -68,7 +100,13 @@ export default function Chat() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, question, history, learner_code: learnerCode || null }),
+        body: JSON.stringify({
+          token, question, history,
+          learner_code: learnerCode || null,
+          notion_concept: notions[notionIndex]?.concept || null,
+          notion_index: notionIndex,
+          notion_total: notions.length,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -79,6 +117,7 @@ export default function Chat() {
       const level = getSocraticLevel(rawAnswer);
       const displayContent = stripMarker(rawAnswer);
 
+      const isNotionAcquired = rawAnswer.startsWith('[NOTION_SUIVANTE]');
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: displayContent,
@@ -89,12 +128,44 @@ export default function Chat() {
         showFeedback: data.pedagogical_mode !== 'socratique',
         isOutOfBase: data.is_out_of_base,
         socraticLevel: data.pedagogical_mode === 'socratique' ? level : null,
+        isNotionAcquired,
       }]);
+
+      // Passer à la notion suivante si acquise
+      if (isNotionAcquired && notions.length > 0) {
+        setTimeout(() => openNotion(notions, notionIndex + 1), 1200);
+      }
+
+      // Passer à la notion suivante si [RÉPONSE] sans acquisition (timeout)
+      if (!isNotionAcquired && rawAnswer.startsWith('[RÉPONSE]') && notions.length > 0) {
+        setTimeout(() => openNotion(notions, notionIndex + 1), 1800);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  }
+
+  function openNotion(notionsList, index) {
+    if (index >= notionsList.length) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Tu as parcouru toutes les notions de cet espace. Bien joué.',
+        rawContent: 'Tu as parcouru toutes les notions de cet espace. Bien joué.',
+        isOutro: true,
+      }]);
+      return;
+    }
+    const n = notionsList[index];
+    setNotionIndex(index);
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: `Notion ${index + 1}/${notionsList.length} : **${n.concept}** — dis-moi ce que tu sais déjà sur ce sujet ?`,
+      rawContent: `[NOTION_OPENER] Notion ${index + 1}/${notionsList.length} : ${n.concept}`,
+      isNotionOpener: true,
+      notionConcept: n.concept,
+    }]);
   }
 
   async function sendFeedback(messageId, helpful) {
@@ -140,6 +211,11 @@ export default function Chat() {
         {isSocratic && (
           <span className="text-xs bg-[#f97316] px-2 py-0.5 rounded-full font-medium">Socratique</span>
         )}
+        {notions.length > 0 && notionIndex < notions.length && (
+          <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
+            {notionIndex + 1}/{notions.length}
+          </span>
+        )}
         <span className="ml-auto text-xs opacity-70">{learnerCode}</span>
       </header>
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-2xl mx-auto w-full">
@@ -149,7 +225,9 @@ export default function Chat() {
               Ton enseignant a préparé des ressources sur <strong>{spaceName || 'ce sujet'}</strong>.
             </p>
             <p className="text-sm text-gray-500 mt-2">
-              {isSocratic ? 'Dis-moi ce que tu sais déjà sur ce sujet.' : 'Pose ta première question…'}
+              {isSocratic
+                ? (sessionReady ? 'Prépare-toi — la première notion arrive.' : 'Chargement du parcours…')
+                : 'Pose ta première question…'}
             </p>
           </div>
         )}
@@ -181,7 +259,7 @@ export default function Chat() {
           placeholder="Pose ta question…"
           maxLength={1000}
           className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-          disabled={loading}
+          disabled={loading || !sessionReady}
         />
         <button
           type="submit"
