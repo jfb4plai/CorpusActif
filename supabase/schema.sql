@@ -168,3 +168,8 @@ alter table messages
 alter table spaces
   add column if not exists socratic_relances_threshold int not null default 5
     check (socratic_relances_threshold between 2 and 10);
+
+-- Notions socratiques par message
+alter table messages
+  add column if not exists notion_concept text,
+  add column if not exists notion_acquired boolean;
