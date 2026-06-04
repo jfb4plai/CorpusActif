@@ -157,11 +157,11 @@ export default function Dashboard({ spaceId }) {
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(notionAcquisition).map(([concept, byCode_]) => (
+                {Object.entries(notionAcquisition).map(([concept, perLearner]) => (
                   <tr key={concept}>
                     <td className="px-3 py-2 border border-gray-200 font-medium text-gray-700 max-w-xs truncate">{concept}</td>
                     {byCode.map(([code]) => {
-                      const v = byCode_[code];
+                      const v = perLearner[code];
                       return (
                         <td key={code} className="px-3 py-2 border border-gray-200 text-center">
                           {v === true

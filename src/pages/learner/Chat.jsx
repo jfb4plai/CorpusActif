@@ -26,6 +26,7 @@ export default function Chat() {
   const [spaceName, setSpaceName] = useState('');
   const [notions, setNotions] = useState([]);
   const [notionIndex, setNotionIndex] = useState(0);
+  const [notionTransitioning, setNotionTransitioning] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const bottomRef = useRef();
 
@@ -133,12 +134,14 @@ export default function Chat() {
 
       // Passer à la notion suivante si acquise
       if (isNotionAcquired && notions.length > 0) {
-        setTimeout(() => openNotion(notions, notionIndex + 1), 1200);
+        setNotionTransitioning(true);
+        setTimeout(() => { openNotion(notions, notionIndex + 1); setNotionTransitioning(false); }, 1200);
       }
 
       // Passer à la notion suivante si [RÉPONSE] sans acquisition (timeout)
       if (!isNotionAcquired && rawAnswer.startsWith('[RÉPONSE]') && notions.length > 0) {
-        setTimeout(() => openNotion(notions, notionIndex + 1), 1800);
+        setNotionTransitioning(true);
+        setTimeout(() => { openNotion(notions, notionIndex + 1); setNotionTransitioning(false); }, 1800);
       }
     } catch (err) {
       setError(err.message);
@@ -161,7 +164,7 @@ export default function Chat() {
     setNotionIndex(index);
     setMessages(prev => [...prev, {
       role: 'assistant',
-      content: `Notion ${index + 1}/${notionsList.length} : **${n.concept}** — dis-moi ce que tu sais déjà sur ce sujet ?`,
+      content: `Notion ${index + 1}/${notionsList.length} : ${n.concept} — dis-moi ce que tu sais déjà sur ce sujet ?`,
       rawContent: `[NOTION_OPENER] Notion ${index + 1}/${notionsList.length} : ${n.concept}`,
       isNotionOpener: true,
       notionConcept: n.concept,
@@ -259,7 +262,7 @@ export default function Chat() {
           placeholder="Pose ta question…"
           maxLength={1000}
           className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-          disabled={loading || !sessionReady}
+          disabled={loading || !sessionReady || notionTransitioning}
         />
         <button
           type="submit"
