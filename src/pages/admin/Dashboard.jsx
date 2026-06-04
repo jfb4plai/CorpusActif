@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 export default function Dashboard({ spaceId }) {
   const [stats, setStats] = useState(null);
   const [byCode, setByCode] = useState([]);
+  const [notionAcquisition, setNotionAcquisition] = useState({});
   const [handoffLoading, setHandoffLoading] = useState(null);
   const [handoffError, setHandoffError] = useState('');
 
@@ -11,7 +12,7 @@ export default function Dashboard({ spaceId }) {
     async function load() {
       const { data: messages } = await supabase
         .from('messages')
-        .select('learner_code, question, answer, is_out_of_base, helpful, created_at')
+        .select('learner_code, question, answer, is_out_of_base, helpful, notion_concept, notion_acquired, created_at')
         .eq('space_id', spaceId)
         .order('created_at', { ascending: false })
         .limit(500);
@@ -39,6 +40,16 @@ export default function Dashboard({ spaceId }) {
 
       setStats({ total, outOfBase, truncated: messages.length === 500 });
       setByCode(Object.entries(codeMap).sort((a, b) => b[1].total - a[1].total));
+
+      // Agrégation par notion (dernière valeur par apprenant × notion)
+      const notionMap = {};
+      messages.forEach(m => {
+        if (m.notion_concept && m.notion_acquired !== null && m.notion_acquired !== undefined) {
+          if (!notionMap[m.notion_concept]) notionMap[m.notion_concept] = {};
+          notionMap[m.notion_concept][m.learner_code || '(sans code)'] = m.notion_acquired;
+        }
+      });
+      setNotionAcquisition(notionMap);
     }
     load();
   }, [spaceId]);
@@ -127,6 +138,43 @@ export default function Dashboard({ spaceId }) {
           ))}
         </div>
       </div>
+
+      {Object.keys(notionAcquisition).length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Acquisition par notion</h3>
+          <div className="overflow-x-auto">
+            <table className="text-xs w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className="text-left px-3 py-2 border border-gray-200 bg-gray-50 font-medium text-gray-600">Notion</th>
+                  {byCode.map(([code]) => (
+                    <th key={code} className="px-3 py-2 border border-gray-200 bg-gray-50 font-medium text-gray-600 text-center">{code}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(notionAcquisition).map(([concept, byCode_]) => (
+                  <tr key={concept}>
+                    <td className="px-3 py-2 border border-gray-200 font-medium text-gray-700 max-w-xs truncate">{concept}</td>
+                    {byCode.map(([code]) => {
+                      const v = byCode_[code];
+                      return (
+                        <td key={code} className="px-3 py-2 border border-gray-200 text-center">
+                          {v === true
+                            ? <span className="text-green-600 font-bold">✓</span>
+                            : v === false
+                              ? <span className="text-red-500 font-bold">✗</span>
+                              : <span className="text-gray-300">—</span>}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
