@@ -46,7 +46,11 @@ export default function Dashboard({ spaceId }) {
       messages.forEach(m => {
         if (m.notion_concept && m.notion_acquired !== null && m.notion_acquired !== undefined) {
           if (!notionMap[m.notion_concept]) notionMap[m.notion_concept] = {};
-          notionMap[m.notion_concept][m.learner_code || '(sans code)'] = m.notion_acquired;
+          const code = m.learner_code || '(sans code)';
+          // Ne pas écraser : premier = plus récent (requête DESC)
+          if (notionMap[m.notion_concept][code] === undefined) {
+            notionMap[m.notion_concept][code] = m.notion_acquired;
+          }
         }
       });
       setNotionAcquisition(notionMap);
