@@ -6,11 +6,26 @@ const SOCRATIC_INDICATORS = {
   reponse: { color: 'bg-green-500', label: 'Réponse' },
 };
 
-export default function ChatMessage({ role, content, sources, chunksCount, isOutOfBase, socraticLevel, onFeedback }) {
+export default function ChatMessage({ role, content, sources, chunksCount, isOutOfBase, socraticLevel, onFeedback, isNotionOpener, isIntro, isOutro }) {
   // feedbackSent est éphémère — si les messages sont chargés depuis la DB au montage,
   // dériver l'état initial depuis m.helpful !== null
   const [feedbackSent, setFeedbackSent] = useState(false);
   const isUser = role === 'user';
+
+  // Messages spéciaux notion — style centré distinct
+  if (isNotionOpener || isIntro || isOutro) {
+    return (
+      <div className="flex justify-center mb-6">
+        <div className={`max-w-[90%] rounded-2xl px-5 py-4 text-sm text-center border-2 ${
+          isNotionOpener
+            ? 'bg-orange-50 border-orange-200 text-orange-900'
+            : 'bg-gray-50 border-gray-200 text-gray-600'
+        }`}>
+          <p className="leading-relaxed font-medium">{content}</p>
+        </div>
+      </div>
+    );
+  }
   const indicator = socraticLevel ? SOCRATIC_INDICATORS[socraticLevel] : null;
 
   return (
