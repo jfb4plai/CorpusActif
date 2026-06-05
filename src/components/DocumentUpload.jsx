@@ -174,7 +174,10 @@ export default function DocumentUpload({ spaceId, userId, onUploaded }) {
       {mode === 'url' && (
         <form onSubmit={processUrl} className="border rounded-lg p-4 space-y-2">
           <p className="text-xs text-gray-500">
-            Dans OneDrive, clic droit sur le fichier → <strong>Partager</strong> → <strong>Copier le lien</strong> (accès "Tout le monde").
+            Dans OneDrive : clic droit sur le fichier → <strong>Partager</strong> → vérifier que l'accès est réglé sur <strong>"Tout le monde peut afficher"</strong> (et non "Personnes de mon organisation") → <strong>Copier le lien</strong>.
+          </p>
+          <p className="text-xs text-amber-600">
+            Un lien réservé à votre organisation ne fonctionnera pas — il nécessite une authentification que cet outil ne gère pas.
           </p>
           <div className="flex gap-2">
             <input
