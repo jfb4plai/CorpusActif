@@ -36,7 +36,7 @@ export default function Spaces() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-gray-800 mb-6">Mes espaces</h1>
+      <h1 className="text-2xl font-bold tracking-tight mb-1" style={{color:'var(--text)'}}>Mes espaces</h1>
       <p className="text-sm font-bold text-gray-600 mb-2">Utilisez le sujet pédagogique comme nom — ex : "La photosynthèse" plutôt que "Classe 3B". Ce nom est affiché à vos apprenants.</p>
       <form onSubmit={createSpace} className="flex gap-3 mb-8">
         <input
@@ -45,19 +45,28 @@ export default function Spaces() {
           placeholder="Ex : La photosynthèse, Les fractions…"
           className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
         />
-        <button type="submit" className="bg-[#0a9370] text-white px-4 py-2 rounded text-sm font-medium hover:bg-teal-700">
+        <button type="submit" className="bg-[#0a9370] text-white px-4 py-2 rounded text-sm font-semibold hover:bg-teal-700">
           Créer
         </button>
       </form>
       <div className="grid gap-3">
         {spaces.map(s => (
-          <div key={s.id} className="bg-white border rounded-lg p-4 flex items-center justify-between hover:border-teal-400 transition">
+          <div
+            key={s.id}
+            className="bg-white p-4 flex items-center justify-between hover:shadow-sm transition"
+            style={{border:'1px solid var(--border)', borderLeft:'3px solid var(--teal)', borderRadius:'4px'}}
+          >
             <button
               onClick={() => navigate(`/admin/spaces/${s.id}`)}
               className="text-left flex-1"
             >
               <p className="font-medium text-gray-800">{s.name}</p>
-              <p className="text-xs text-gray-400 mt-1">Mode : {s.out_of_base_mode}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Mode : {s.out_of_base_mode}
+                {s.pedagogical_mode === 'socratique' && (
+                  <span className="inline-block text-xs bg-orange-100 text-orange-700 rounded px-2 py-0.5 ml-2 font-medium">Socratique</span>
+                )}
+              </p>
             </button>
             {confirmDelete === s.id ? (
               <div className="flex items-center gap-2 ml-4">
