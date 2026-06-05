@@ -137,7 +137,7 @@ export default function Curriculum({ spaceId, session }) {
 
       {/* Modal sauvegarde */}
       {showSaveModal && (
-        <form onSubmit={saveAsTemplate} className="bg-teal-50 border border-teal-200 rounded-lg p-4 flex gap-2 items-end">
+        <form onSubmit={saveAsTemplate} className="bg-teal-50 border border-teal-200 rounded p-4 flex gap-2 items-end">
           <div className="flex-1">
             <label className="text-xs text-gray-600 block mb-1">Nom du modèle</label>
             <input
@@ -162,7 +162,7 @@ export default function Curriculum({ spaceId, session }) {
 
       {/* Panel import */}
       {showImport && (
-        <div className="bg-gray-50 border rounded-lg p-4 space-y-3">
+        <div className="bg-gray-50 border rounded p-4 space-y-3">
           <p className="text-xs text-gray-500">Sélectionner un modèle remplace le curriculum actuel de cet espace.</p>
           <div className="space-y-1">
             {templates.map(t => (
@@ -193,7 +193,7 @@ export default function Curriculum({ spaceId, session }) {
         </div>
       )}
 
-      <form onSubmit={save} className="bg-white border rounded-lg p-4 space-y-3">
+      <form onSubmit={save} className="bg-white border rounded p-4 space-y-3">
         <h3 className="text-sm font-semibold text-gray-700">{editId ? 'Modifier' : 'Ajouter'} un concept</h3>
         <input
           placeholder="Concept *"
@@ -242,7 +242,7 @@ export default function Curriculum({ spaceId, session }) {
       </form>
       <div className="space-y-2">
         {nodes.map(n => (
-          <div key={n.id} className="bg-white border rounded-lg px-4 py-3 flex justify-between items-start">
+          <div key={n.id} className="bg-white border rounded px-4 py-3 flex justify-between items-start">
             <div>
               <p className="text-sm font-medium text-gray-800">{n.concept}</p>
               <p className="text-xs text-gray-500 mt-1">{n.definition}</p>

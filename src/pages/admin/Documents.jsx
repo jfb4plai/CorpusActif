@@ -27,7 +27,7 @@ export default function Documents({ spaceId, session }) {
       <DocumentUpload spaceId={spaceId} userId={session?.user?.id} onUploaded={loadDocs} />
       <div className="space-y-2">
         {docs.map(doc => (
-          <div key={doc.id} className="flex items-center justify-between bg-white border rounded-lg px-4 py-3">
+          <div key={doc.id} className="flex items-center justify-between bg-white border rounded px-4 py-3">
             <div>
               <p className="text-sm font-medium text-gray-800">{doc.title}</p>
               <p className="text-xs text-gray-400">{doc.type.toUpperCase()} · {new Date(doc.created_at).toLocaleDateString('fr-BE')}</p>

@@ -15,6 +15,7 @@ export default function LearnerCodes({ spaceId, session }) {
   const [generatingQr, setGeneratingQr] = useState(null);
   const [expiresDays, setExpiresDays] = useState(30);
   const [showSessions, setShowSessions] = useState(false);
+  const [confirmDeleteCode, setConfirmDeleteCode] = useState(null);
 
   async function loadCodes() {
     const { data } = await supabase
@@ -63,6 +64,7 @@ export default function LearnerCodes({ spaceId, session }) {
   async function deleteCode(id) {
     await supabase.from('learner_codes').delete().eq('id', id);
     setCodes(prev => prev.filter(c => c.id !== id));
+    setConfirmDeleteCode(null);
   }
 
   async function generateSpaceQR() {
@@ -80,11 +82,11 @@ export default function LearnerCodes({ spaceId, session }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-xs text-amber-800">
+      <div className="bg-amber-50 border border-amber-200 rounded p-4 text-xs text-amber-800">
         Les codes anonymes ne protègent pas l'identité si vous connaissez la correspondance. Cette app ne stocke aucun nom — la correspondance reste dans votre registre de classe.
       </div>
 
-      <div className="bg-white border rounded-lg p-4 space-y-3">
+      <div className="bg-white border rounded p-4 space-y-3">
         <h3 className="text-sm font-semibold text-gray-700">Générer des codes</h3>
         <div className="flex gap-3 items-end">
           <div>
@@ -119,7 +121,7 @@ export default function LearnerCodes({ spaceId, session }) {
         <p className="text-xs text-gray-400 mb-3">Le QR Code commun est un code unique à afficher au tableau. Chaque apprenant scanne le même et saisit son code personnel à l'arrivée.</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {codes.map(c => (
-            <div key={c.id} className="bg-white border rounded-lg px-3 py-2 flex items-center justify-between hover:border-teal-400 transition">
+            <div key={c.id} className="bg-white border rounded px-3 py-2 flex items-center justify-between hover:border-teal-400 transition">
               <button
                 onClick={() => generateQR(c.code)}
                 disabled={generatingQr === c.code}
@@ -128,13 +130,21 @@ export default function LearnerCodes({ spaceId, session }) {
                 {c.code}
                 <span className="block text-xs text-gray-400 font-normal mt-0.5">Générer QR</span>
               </button>
-              <button
-                onClick={() => deleteCode(c.id)}
-                className="text-gray-300 hover:text-red-400 transition text-xs ml-2"
-                title="Supprimer ce code"
-              >
-                ✕
-              </button>
+              {confirmDeleteCode === c.id ? (
+                <div className="flex items-center gap-2 ml-2">
+                  <span className="text-xs text-red-500">Supprimer ?</span>
+                  <button onClick={() => deleteCode(c.id)} className="text-xs text-red-500 font-medium hover:text-red-700">Oui</button>
+                  <button onClick={() => setConfirmDeleteCode(null)} className="text-xs text-gray-400 hover:text-gray-600">Non</button>
+                </div>
+              ) : (
+                <button
+                  onClick={e => { e.stopPropagation(); setConfirmDeleteCode(c.id); }}
+                  className="text-gray-300 hover:text-red-400 transition text-xs ml-2"
+                  title="Supprimer ce code"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -155,7 +165,7 @@ export default function LearnerCodes({ spaceId, session }) {
               <p className="text-xs text-gray-400">Aucun QR code actif.</p>
             )}
             {sessions.map(s => (
-              <div key={s.id} className="flex items-center justify-between bg-white border rounded-lg px-4 py-2">
+              <div key={s.id} className="flex items-center justify-between bg-white border rounded px-4 py-2">
                 <div>
                   <p className="text-sm font-medium text-gray-800">
                     {s.learner_code || 'QR Code commun'}
@@ -177,7 +187,7 @@ export default function LearnerCodes({ spaceId, session }) {
       </div>
 
       {qrData && (
-        <div className="bg-white border rounded-lg p-6">
+        <div className="bg-white border rounded p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-sm font-semibold">QR — {qrData.code}</h3>
             <button onClick={() => setQrData(null)} className="text-xs text-gray-400">Fermer</button>
