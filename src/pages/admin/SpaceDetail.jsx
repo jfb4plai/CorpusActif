@@ -165,7 +165,7 @@ export default function SpaceDetail() {
             <button
               key={m}
               onClick={() => handleOutOfBaseMode(m)}
-              className={`px-3 py-1 rounded-full border text-xs font-medium transition ${outOfBaseMode === m ? 'bg-[#0a9370] text-white border-[#0a9370]' : 'text-gray-600 border-gray-300 hover:border-teal-400'}`}
+              className={`px-3 py-1 rounded border text-xs font-medium transition ${outOfBaseMode === m ? 'bg-[#0a9370] text-white border-[#0a9370]' : 'text-gray-600 border-gray-300 hover:border-teal-400'}`}
             >
               {m}
             </button>
@@ -173,14 +173,14 @@ export default function SpaceDetail() {
         </div>
 
         {/* Seuil de similarité */}
-        <div className="bg-white border rounded-lg p-4 mb-4">
-          <p className="text-sm font-medium text-gray-700 mb-3">Seuil de similarité</p>
+        <div className="bg-white border rounded p-4 mb-4" style={{borderLeft:'3px solid var(--teal)'}}>
+          <p className="label-upper mb-3">Seuil de similarité</p>
           <div className="flex gap-2 mb-3">
             {THRESHOLD_PRESETS.map(p => (
               <Tooltip key={p.label} text={p.tooltip}>
                 <button
                   onClick={() => handlePreset(p.value)}
-                  className={`px-3 py-1 rounded-full border text-xs font-medium transition ${activePreset?.label === p.label ? 'bg-[#0a9370] text-white border-[#0a9370]' : 'text-gray-600 border-gray-300 hover:border-teal-400'}`}
+                  className={`px-3 py-1 rounded border text-xs font-medium transition ${activePreset?.label === p.label ? 'bg-[#0a9370] text-white border-[#0a9370]' : 'text-gray-600 border-gray-300 hover:border-teal-400'}`}
                 >
                   {p.label}
                 </button>
@@ -208,19 +208,19 @@ export default function SpaceDetail() {
         </div>
 
         {/* Mode pédagogique */}
-        <div className="bg-white border rounded-lg p-4">
-          <p className="text-sm font-medium text-gray-700 mb-3">Mode pédagogique</p>
+        <div className="bg-white border rounded p-4" style={{borderLeft:'3px solid var(--teal)'}}>
+          <p className="label-upper mb-3">Mode pédagogique</p>
           <div className="flex gap-2">
             <button
               onClick={() => handlePedagogicalMode('direct')}
-              className={`px-4 py-1.5 rounded-full border text-xs font-medium transition ${pedagogicalMode === 'direct' ? 'bg-[#0a9370] text-white border-[#0a9370]' : 'text-gray-600 border-gray-300 hover:border-teal-400'}`}
+              className={`px-4 py-1.5 rounded border text-xs font-medium transition ${pedagogicalMode === 'direct' ? 'bg-[#0a9370] text-white border-[#0a9370]' : 'text-gray-600 border-gray-300 hover:border-teal-400'}`}
             >
               Direct
             </button>
             <Tooltip text="Claude guide l'apprenant par des questions plutôt que de donner la réponse directement. Après 5 relances sans progression, un indice est fourni. Après 2 nouveaux blocages, la réponse est donnée en valorisant ce que l'apprenant a déjà compris.">
               <button
                 onClick={() => handlePedagogicalMode('socratique')}
-                className={`px-4 py-1.5 rounded-full border text-xs font-medium transition ${pedagogicalMode === 'socratique' ? 'bg-[#f97316] text-white border-[#f97316]' : 'text-gray-600 border-gray-300 hover:border-orange-400'}`}
+                className={`px-4 py-1.5 rounded border text-xs font-medium transition ${pedagogicalMode === 'socratique' ? 'bg-[#f97316] text-white border-[#f97316]' : 'text-gray-600 border-gray-300 hover:border-orange-400'}`}
               >
                 Socratique ⓘ
               </button>
@@ -228,7 +228,7 @@ export default function SpaceDetail() {
           </div>
           {pedagogicalMode === 'socratique' && (
             <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500 mb-2">Rythme d'accompagnement</p>
+              <p className="label-upper mb-2">Rythme d'accompagnement</p>
               <div className="flex gap-2">
                 {[
                   { label: 'Rapide', value: 3, title: 'Drill, vocabulaire — indice après 3 relances' },
@@ -239,7 +239,7 @@ export default function SpaceDetail() {
                     key={p.value}
                     onClick={() => handleRelancesThreshold(p.value)}
                     title={p.title}
-                    className={`px-3 py-1 rounded-full border text-xs font-medium transition ${
+                    className={`px-3 py-1 rounded border text-xs font-medium transition ${
                       relancesThreshold === p.value
                         ? 'bg-[#f97316] text-white border-[#f97316]'
                         : 'text-gray-600 border-gray-300 hover:border-orange-400'
@@ -257,8 +257,8 @@ export default function SpaceDetail() {
         </div>
 
         {/* Contexte pédagogique */}
-        <div className="bg-white border rounded-lg p-4 mt-4">
-          <p className="text-sm font-medium text-gray-700 mb-3">Contexte pédagogique</p>
+        <div className="bg-white border rounded p-4 mt-4" style={{borderLeft:'3px solid var(--teal)'}}>
+          <p className="label-upper mb-3">Contexte pédagogique</p>
           <p className="text-xs text-gray-400 mb-3">Utilisé pour la passerelle vers RetroActif.</p>
           <div className="flex gap-3">
             <div className="flex-1">
@@ -285,7 +285,7 @@ export default function SpaceDetail() {
           {/* Deck FlashFWB */}
           <div className="mt-3 pt-3 border-t border-gray-100">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-gray-600">Deck FlashFWB</p>
+              <p className="label-upper">Deck FlashFWB</p>
               {flashDeckId && (
                 <a
                   href="https://flashfwb-cd2m.vercel.app"
