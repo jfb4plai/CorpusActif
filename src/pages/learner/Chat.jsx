@@ -200,7 +200,7 @@ export default function Chat() {
               className="w-full border rounded px-3 py-2 text-sm mb-3"
               required
             />
-            <button type="submit" className="w-full bg-[#0a9370] text-white py-2 rounded text-sm font-medium">
+            <button type="submit" className="w-full bg-[#0a9370] text-white py-2 rounded text-sm font-semibold">
               Commencer
             </button>
           </form>
@@ -272,13 +272,13 @@ export default function Chat() {
           onChange={e => setInput(e.target.value)}
           placeholder="Pose ta question…"
           maxLength={1000}
-          className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+          className="flex-1 border rounded px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
           disabled={loading || !sessionReady || notionTransitioning}
         />
         <button
           type="submit"
           disabled={loading || !input.trim() || notionTransitioning}
-          className="bg-[#0a9370] text-white px-5 py-2 rounded-full text-sm font-medium disabled:opacity-50"
+          className="bg-[#0a9370] text-white px-5 py-2 rounded text-sm font-semibold disabled:opacity-50"
         >
           Envoyer
         </button>

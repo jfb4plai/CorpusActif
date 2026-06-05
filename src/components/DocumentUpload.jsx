@@ -190,7 +190,7 @@ export default function DocumentUpload({ spaceId, userId, onUploaded }) {
             <button
               type="submit"
               disabled={!shareUrl.trim() || !!status}
-              className="bg-[#0a9370] text-white px-4 py-2 rounded text-sm font-medium disabled:opacity-50 shrink-0"
+              className="bg-[#0a9370] text-white px-4 py-2 rounded text-sm font-semibold disabled:opacity-50 shrink-0"
             >
               Importer
             </button>
