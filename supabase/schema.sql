@@ -173,3 +173,15 @@ alter table spaces
 alter table messages
   add column if not exists notion_concept text,
   add column if not exists notion_acquired boolean;
+
+-- Templates de curriculum (strictement personnels)
+create table if not exists curriculum_templates (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users not null,
+  name text not null,
+  nodes jsonb not null default '[]',
+  created_at timestamptz default now()
+);
+alter table curriculum_templates enable row level security;
+create policy "curriculum_templates_owner" on curriculum_templates
+  for all using (auth.uid() = user_id);

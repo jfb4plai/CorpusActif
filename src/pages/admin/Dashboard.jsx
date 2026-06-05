@@ -5,6 +5,7 @@ export default function Dashboard({ spaceId }) {
   const [stats, setStats] = useState(null);
   const [byCode, setByCode] = useState([]);
   const [notionAcquisition, setNotionAcquisition] = useState({});
+  const [blockedQuestions, setBlockedQuestions] = useState([]);
   const [handoffLoading, setHandoffLoading] = useState(null);
   const [handoffError, setHandoffError] = useState('');
 
@@ -37,6 +38,19 @@ export default function Dashboard({ spaceId }) {
         if (m.helpful === false) codeMap[code].notHelpful++;
         if (m.helpful !== null && m.helpful !== undefined) codeMap[code].feedbackCount++;
       });
+
+      // Questions bloquées globales (précédant un [INDICE]) classées par fréquence
+      const blockedMap = {};
+      messages.forEach(m => {
+        if (m.answer?.startsWith('[INDICE]') && m.question) {
+          const q = m.question.trim();
+          blockedMap[q] = (blockedMap[q] || 0) + 1;
+        }
+      });
+      const blocked = Object.entries(blockedMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15);
+      setBlockedQuestions(blocked);
 
       setStats({ total, outOfBase, truncated: messages.length === 500 });
       setByCode(Object.entries(codeMap).sort((a, b) => b[1].total - a[1].total));
@@ -93,6 +107,21 @@ export default function Dashboard({ spaceId }) {
         <StatCard label="Hors-base" value={stats.outOfBase} sub={`${stats.total ? Math.round(stats.outOfBase / stats.total * 100) : 0}%`} />
         <StatCard label="Apprenants actifs" value={byCode.length} />
       </div>
+
+      {blockedQuestions.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-1">Questions bloquées</h3>
+          <p className="text-xs text-gray-400 mb-3">Questions ayant déclenché un indice — classées par fréquence. Ce sont les points durs de votre corpus.</p>
+          <div className="space-y-1">
+            {blockedQuestions.map(([q, count]) => (
+              <div key={q} className="flex items-start gap-3 bg-white border rounded-lg px-4 py-2">
+                <span className="shrink-0 mt-0.5 text-xs font-bold text-orange-500 w-6 text-right">{count}×</span>
+                <p className="text-xs text-gray-700">{q}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div>
         {handoffError && (

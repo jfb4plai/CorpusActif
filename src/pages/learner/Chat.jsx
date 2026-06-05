@@ -28,6 +28,7 @@ export default function Chat() {
   const [notionIndex, setNotionIndex] = useState(0);
   const [notionTransitioning, setNotionTransitioning] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [flashDeckId, setFlashDeckId] = useState(null);
   const bottomRef = useRef();
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export default function Chat() {
     })
       .then(r => r.json())
       .then(data => {
+        if (data.flashcard_deck_id) setFlashDeckId(data.flashcard_deck_id);
         if (data.notions && data.notions.length > 0) {
           setNotions(data.notions);
           setMessages([{
@@ -157,6 +159,7 @@ export default function Chat() {
         content: 'Tu as parcouru toutes les notions de cet espace. Bien joué.',
         rawContent: 'Tu as parcouru toutes les notions de cet espace. Bien joué.',
         isOutro: true,
+        flashDeckId,
       }]);
       return;
     }
@@ -189,7 +192,7 @@ export default function Chat() {
         <div className="bg-white p-8 rounded-lg shadow w-full max-w-sm">
           <img src="/plai-logo.jpg" alt="PLAI" className="h-8 mb-4" />
           <h1 className="text-lg font-semibold text-gray-800 mb-4">Saisis ton code</h1>
-          <form onSubmit={e => { e.preventDefault(); if (learnerCode.trim()) setCodeSubmitted(true); }}>
+          <form onSubmit={e => { e.preventDefault(); if (learnerCode.trim().length >= 2) setCodeSubmitted(true); }}>
             <input
               value={learnerCode}
               onChange={e => setLearnerCode(e.target.value.toUpperCase())}
@@ -229,7 +232,15 @@ export default function Chat() {
             </p>
             <p className="text-sm text-gray-500 mt-2">
               {isSocratic
-                ? (sessionReady ? 'Prépare-toi — la première notion arrive.' : 'Chargement du parcours…')
+                ? (sessionReady
+                    ? 'Prépare-toi — la première notion arrive.'
+                    : <span className="inline-flex items-center gap-2">
+                        <svg className="animate-spin h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        </svg>
+                        Chargement du parcours…
+                      </span>)
                 : 'Pose ta première question…'}
             </p>
           </div>
@@ -266,7 +277,7 @@ export default function Chat() {
         />
         <button
           type="submit"
-          disabled={loading || !input.trim()}
+          disabled={loading || !input.trim() || notionTransitioning}
           className="bg-[#0a9370] text-white px-5 py-2 rounded-full text-sm font-medium disabled:opacity-50"
         >
           Envoyer

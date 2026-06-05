@@ -17,6 +17,7 @@ export default function Documents({ spaceId, session }) {
   useEffect(() => { loadDocs(); }, [spaceId]);
 
   async function deleteDoc(id) {
+    await supabase.from('chunks').delete().eq('document_id', id);
     await supabase.from('documents').delete().eq('id', id);
     setDocs(prev => prev.filter(d => d.id !== id));
   }

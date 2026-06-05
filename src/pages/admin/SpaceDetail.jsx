@@ -197,6 +197,7 @@ export default function SpaceDetail() {
               onChange={handleSlider}
               onMouseUp={handleSliderCommit}
               onTouchEnd={handleSliderCommit}
+              onKeyUp={handleSliderCommit}
               className="flex-1 accent-[#0a9370]"
             />
             <span className="text-xs text-gray-500 w-8 text-right">{threshold.toFixed(2)}</span>

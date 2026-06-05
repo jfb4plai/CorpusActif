@@ -7,6 +7,12 @@ export default function Curriculum({ spaceId, session }) {
   const [nodes, setNodes] = useState([]);
   const [form, setForm] = useState({ concept: '', definition: '', level: '', parent_id: '' });
   const [editId, setEditId] = useState(null);
+  const [templates, setTemplates] = useState([]);
+  const [templateName, setTemplateName] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateMsg, setTemplateMsg] = useState('');
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   async function loadNodes() {
     const { data } = await supabase
@@ -17,7 +23,15 @@ export default function Curriculum({ spaceId, session }) {
     setNodes(data || []);
   }
 
-  useEffect(() => { loadNodes(); }, [spaceId]);
+  async function loadTemplates() {
+    const { data } = await supabase
+      .from('curriculum_templates')
+      .select('id, name, nodes')
+      .order('created_at', { ascending: false });
+    setTemplates(data || []);
+  }
+
+  useEffect(() => { loadNodes(); loadTemplates(); }, [spaceId]);
 
   async function save(e) {
     e.preventDefault();
@@ -38,6 +52,55 @@ export default function Curriculum({ spaceId, session }) {
     }
   }
 
+  async function saveAsTemplate(e) {
+    e.preventDefault();
+    if (!templateName.trim() || nodes.length === 0) return;
+    setSavingTemplate(true);
+    setTemplateMsg('');
+    const snap = nodes.map(({ concept, definition, level }) => ({ concept, definition, level: level || null }));
+    const { error } = await supabase
+      .from('curriculum_templates')
+      .insert({ user_id: session.user.id, name: templateName.trim(), nodes: snap });
+    setSavingTemplate(false);
+    if (error) {
+      setTemplateMsg('Erreur lors de la sauvegarde.');
+    } else {
+      setTemplateMsg(`Modèle "${templateName.trim()}" sauvegardé.`);
+      setTemplateName('');
+      setShowSaveModal(false);
+      loadTemplates();
+    }
+  }
+
+  async function importTemplate(templateId) {
+    const tpl = templates.find(t => t.id === templateId);
+    if (!tpl) return;
+    if (!window.confirm(`Remplacer le curriculum actuel par "${tpl.name}" (${tpl.nodes.length} concepts) ?`)) return;
+
+    // Supprimer les nœuds existants
+    for (const n of nodes) {
+      await supabase.from('curriculum_nodes').delete().eq('id', n.id);
+    }
+    // Insérer les nœuds du template
+    for (const n of tpl.nodes) {
+      await supabase.from('curriculum_nodes').insert({
+        space_id: spaceId,
+        concept: n.concept,
+        definition: n.definition,
+        level: n.level || null,
+      });
+    }
+    setShowImport(false);
+    setSelectedTemplate('');
+    loadNodes();
+  }
+
+  async function deleteTemplate(id, name) {
+    if (!window.confirm(`Supprimer le modèle "${name}" ?`)) return;
+    await supabase.from('curriculum_templates').delete().eq('id', id);
+    loadTemplates();
+  }
+
   async function deleteNode(id) {
     const token = session.access_token;
     await fetch(`/api/curriculum?space_id=${spaceId}`, {
@@ -50,6 +113,86 @@ export default function Curriculum({ spaceId, session }) {
 
   return (
     <div className="space-y-6">
+
+      {/* Barre modèles */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => { setShowSaveModal(s => !s); setShowImport(false); setTemplateMsg(''); }}
+          disabled={nodes.length === 0}
+          className="text-xs border border-[#0a9370] text-[#0a9370] px-3 py-1.5 rounded hover:bg-teal-50 disabled:opacity-40"
+        >
+          Sauvegarder comme modèle
+        </button>
+        <button
+          type="button"
+          onClick={() => { setShowImport(s => !s); setShowSaveModal(false); }}
+          disabled={templates.length === 0}
+          className="text-xs border border-gray-300 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-50 disabled:opacity-40"
+        >
+          Importer un modèle {templates.length > 0 && `(${templates.length})`}
+        </button>
+        {templateMsg && <p className="text-xs text-teal-700">{templateMsg}</p>}
+      </div>
+
+      {/* Modal sauvegarde */}
+      {showSaveModal && (
+        <form onSubmit={saveAsTemplate} className="bg-teal-50 border border-teal-200 rounded-lg p-4 flex gap-2 items-end">
+          <div className="flex-1">
+            <label className="text-xs text-gray-600 block mb-1">Nom du modèle</label>
+            <input
+              value={templateName}
+              onChange={e => setTemplateName(e.target.value)}
+              placeholder="Ex : Photosynthèse — 4e secondaire"
+              className="w-full border rounded px-3 py-2 text-sm"
+              required
+              autoFocus
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={savingTemplate || !templateName.trim()}
+            className="bg-[#0a9370] text-white px-4 py-2 rounded text-sm font-medium disabled:opacity-50 shrink-0"
+          >
+            {savingTemplate ? '…' : 'Sauvegarder'}
+          </button>
+          <button type="button" onClick={() => setShowSaveModal(false)} className="border px-4 py-2 rounded text-sm shrink-0">Annuler</button>
+        </form>
+      )}
+
+      {/* Panel import */}
+      {showImport && (
+        <div className="bg-gray-50 border rounded-lg p-4 space-y-3">
+          <p className="text-xs text-gray-500">Sélectionner un modèle remplace le curriculum actuel de cet espace.</p>
+          <div className="space-y-1">
+            {templates.map(t => (
+              <div key={t.id} className="flex items-center justify-between bg-white border rounded px-3 py-2">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{t.name}</p>
+                  <p className="text-xs text-gray-400">{t.nodes.length} concept{t.nodes.length > 1 ? 's' : ''}</p>
+                </div>
+                <div className="flex gap-2 ml-4">
+                  <button
+                    type="button"
+                    onClick={() => importTemplate(t.id)}
+                    className="text-xs border border-[#0a9370] text-[#0a9370] px-2 py-1 rounded hover:bg-teal-50"
+                  >
+                    Importer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteTemplate(t.id, t.name)}
+                    className="text-xs text-red-400 hover:text-red-600"
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <form onSubmit={save} className="bg-white border rounded-lg p-4 space-y-3">
         <h3 className="text-sm font-semibold text-gray-700">{editId ? 'Modifier' : 'Ajouter'} un concept</h3>
         <input

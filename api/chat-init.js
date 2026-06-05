@@ -29,7 +29,7 @@ export default async function handler(req, res) {
   // Vérifier mode socratique
   const { data: space } = await supabase
     .from('spaces')
-    .select('name, pedagogical_mode')
+    .select('name, pedagogical_mode, flashcard_deck_id')
     .eq('id', space_id)
     .single();
 
@@ -49,6 +49,7 @@ export default async function handler(req, res) {
       notions: nodes.map(n => ({ concept: n.concept, definition: n.definition || '' })),
       total: nodes.length,
       space_name: space.name,
+      flashcard_deck_id: space.flashcard_deck_id || null,
     });
   }
 
@@ -87,7 +88,7 @@ Réponds en JSON strict uniquement, sans texte avant ou après :
       ? parsed.filter(n => n.concept).map(n => ({ concept: n.concept, definition: n.definition || '' }))
       : [];
 
-    return res.status(200).json({ notions, total: notions.length, space_name: space.name });
+    return res.status(200).json({ notions, total: notions.length, space_name: space.name, flashcard_deck_id: space.flashcard_deck_id || null });
   } catch (err) {
     console.error('[chat-init] notion extraction failed:', err.message);
     return res.status(200).json({ notions: [], total: 0, space_name: space.name });

@@ -6,7 +6,7 @@ const SOCRATIC_INDICATORS = {
   reponse: { color: 'bg-green-500', label: 'Réponse' },
 };
 
-export default function ChatMessage({ role, content, sources, chunksCount, isOutOfBase, socraticLevel, onFeedback, isNotionOpener, isIntro, isOutro }) {
+export default function ChatMessage({ role, content, sources, chunksCount, isOutOfBase, socraticLevel, onFeedback, isNotionOpener, isIntro, isOutro, flashDeckId }) {
   // feedbackSent est éphémère — si les messages sont chargés depuis la DB au montage,
   // dériver l'état initial depuis m.helpful !== null
   const [feedbackSent, setFeedbackSent] = useState(false);
@@ -22,6 +22,16 @@ export default function ChatMessage({ role, content, sources, chunksCount, isOut
             : 'bg-gray-50 border-gray-200 text-gray-600'
         }`}>
           <p className="leading-relaxed font-medium">{content}</p>
+          {isOutro && flashDeckId && (
+            <a
+              href="https://flashfwb-cd2m.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-3 px-4 py-2 bg-[#0a9370] text-white text-xs font-medium rounded-full hover:bg-teal-700 transition"
+            >
+              Réviser avec FlashFWB →
+            </a>
+          )}
         </div>
       </div>
     );
