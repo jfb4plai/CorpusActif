@@ -110,7 +110,7 @@ export default function Dashboard({ spaceId }) {
 
       {blockedQuestions.length > 0 && (
         <div>
-          <h3 className="label-upper mb-1">Questions bloquées</h3>
+          <h3 className="label-upper mb-3">Questions bloquées</h3>
           <p className="text-xs text-gray-400 mb-3">Questions ayant déclenché un indice — classées par fréquence. Ce sont les points durs de votre corpus.</p>
           <div className="space-y-1">
             {blockedQuestions.map(([q, count]) => (
