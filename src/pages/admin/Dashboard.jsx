@@ -110,11 +110,11 @@ export default function Dashboard({ spaceId }) {
 
       {blockedQuestions.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-1">Questions bloquées</h3>
+          <h3 className="label-upper mb-1">Questions bloquées</h3>
           <p className="text-xs text-gray-400 mb-3">Questions ayant déclenché un indice — classées par fréquence. Ce sont les points durs de votre corpus.</p>
           <div className="space-y-1">
             {blockedQuestions.map(([q, count]) => (
-              <div key={q} className="flex items-start gap-3 bg-white border rounded-lg px-4 py-2">
+              <div key={q} className="flex items-start gap-3 bg-white border rounded px-4 py-2">
                 <span className="shrink-0 mt-0.5 text-xs font-bold text-orange-500 w-6 text-right">{count}×</span>
                 <p className="text-xs text-gray-700">{q}</p>
               </div>
@@ -129,10 +129,10 @@ export default function Dashboard({ spaceId }) {
             {handoffError}
           </p>
         )}
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Par code apprenant</h3>
+        <h3 className="label-upper mb-3">Par code apprenant</h3>
         <div className="space-y-2">
           {byCode.map(([code, data]) => (
-            <details key={code} className="bg-white border rounded-lg">
+            <details key={code} className="bg-white border rounded">
               <summary className="flex items-center justify-between px-4 py-3 cursor-pointer text-sm">
                 <span className="font-medium text-gray-800">{code}</span>
                 <div className="flex items-center gap-3">
@@ -174,7 +174,7 @@ export default function Dashboard({ spaceId }) {
 
       {Object.keys(notionAcquisition).length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Acquisition par notion</h3>
+          <h3 className="label-upper mb-3">Acquisition par notion</h3>
           <div className="overflow-x-auto">
             <table className="text-xs w-full border-collapse">
               <thead>
@@ -214,10 +214,10 @@ export default function Dashboard({ spaceId }) {
 
 function StatCard({ label, value, sub }) {
   return (
-    <div className="bg-white border rounded-lg px-4 py-4">
-      <p className="text-2xl font-bold text-[#0a9370]">{value}</p>
-      <p className="text-xs text-gray-500 mt-1">{label}</p>
-      {sub && <p className="text-xs text-gray-400">{sub}</p>}
+    <div className="bg-white px-4 py-4" style={{border:'1px solid var(--border)', borderLeft:'3px solid var(--teal)', borderRadius:'4px'}}>
+      <p className="text-2xl font-bold" style={{color:'var(--teal)'}}>{value}</p>
+      <p className="text-xs mt-1" style={{color:'var(--text3)'}}>{label}</p>
+      {sub && <p className="text-xs" style={{color:'var(--text3)'}}>{sub}</p>}
     </div>
   );
 }
