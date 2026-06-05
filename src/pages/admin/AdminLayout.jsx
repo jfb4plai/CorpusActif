@@ -28,7 +28,7 @@ export default function AdminLayout() {
       <nav style={{backgroundColor:'var(--teal)'}} className="text-white px-6 py-4 flex items-center justify-between shadow-sm">
         <Link to="/admin" className="flex items-center gap-3">
           <img src="/plai-logo.jpg" alt="PLAI" className="h-7" />
-          <span style={{fontFamily:'DM Serif Display, serif', fontSize:'1.2rem', fontWeight:400}}>CorpusActif</span>
+          <span className="text-base font-semibold tracking-tight">CorpusActif</span>
         </Link>
         <button onClick={() => signOut().then(() => navigate('/login'))} className="text-sm opacity-75 hover:opacity-100 transition">
           Déconnexion
