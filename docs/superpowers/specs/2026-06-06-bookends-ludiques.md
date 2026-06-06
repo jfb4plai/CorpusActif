@@ -16,6 +16,13 @@ L'app est utilisée sur la base du volontariat. L'engagement durable repose sur 
 - Rappel au chargement (activation des acquis antérieurs, amorçage)
 - Carte de notions + message de clôture en fin de parcours (consolidation + tension Zeigarnik)
 
+**Condition d'activation : curriculum défini par l'enseignant**
+Les trois composants ne s'activent que si l'espace dispose de `curriculum_nodes` enregistrés par l'enseignant. Si le mode socratique est actif sans curriculum, la session démarre normalement sans bookends. Principe : l'IA propose, l'enseignant valide — les notions qui structurent la progression d'un apprenant doivent avoir été choisies par un humain, pas extraites automatiquement.
+
+Conséquence UX côté enseignant : un avertissement s'affiche dans SpaceDetail si le mode socratique est activé sans curriculum défini — "Les bilans de session (rappel, carte de notions, message personnalisé) nécessitent un curriculum défini."
+
+S'applique à tous les espaces, tous les enseignants, toutes les matières — aucune exception.
+
 ---
 
 ## Composant 1 — Rappel d'ouverture
@@ -152,12 +159,13 @@ Si l'appel Haiku échoue : afficher un message de secours côté client ("Parcou
 
 | Fichier | Modification |
 |---------|-------------|
-| `api/chat-init.js` | Ajouter `previous_notions` et `last_session_date` dans la réponse |
+| `api/chat-init.js` | Ajouter `previous_notions`, `last_session_date`, `has_curriculum` dans la réponse |
 | `api/chat-debrief.js` | Nouveau endpoint — génération message de clôture Haiku |
-| `src/pages/learner/Chat.jsx` | Injection `isRecap` au chargement, `isNotionMap` + appel debrief en fin de parcours |
-| `src/components/ChatMessage.jsx` | Deux nouveaux rendus : `isRecap` et `isNotionMap` et `isDebrief` |
+| `src/pages/admin/SpaceDetail.jsx` | Avertissement si socratique sans curriculum |
+| `src/pages/learner/Chat.jsx` | Injection `isRecap` si `has_curriculum`, `isNotionMap` + appel debrief en fin de parcours |
+| `src/components/ChatMessage.jsx` | Trois nouveaux rendus : `isRecap`, `isNotionMap`, `isDebrief` |
 
-**Aucune nouvelle table Supabase.** Tout s'appuie sur `messages.notion_acquired`, `messages.answer`, `messages.created_at`.
+**Aucune nouvelle table Supabase.** Tout s'appuie sur `curriculum_nodes`, `messages.notion_acquired`, `messages.answer`, `messages.created_at`.
 
 ---
 
