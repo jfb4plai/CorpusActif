@@ -56,6 +56,7 @@ export default function SpaceDetail() {
   const [flashDeckId, setFlashDeckId] = useState(null);
   const [flashGenerating, setFlashGenerating] = useState(false);
   const [flashResult, setFlashResult] = useState(null);
+  const [hasCurriculum, setHasCurriculum] = useState(false);
 
   useEffect(() => {
     supabase.from('spaces').select('*').eq('id', spaceId).single()
@@ -71,6 +72,10 @@ export default function SpaceDetail() {
           setFlashDeckId(data.flashcard_deck_id ?? null);
         }
       });
+    // Vérifier présence curriculum pour avertissement bookends
+    supabase.from('curriculum_nodes').select('id', { count: 'exact', head: true })
+      .eq('space_id', spaceId)
+      .then(({ count }) => setHasCurriculum((count ?? 0) > 0));
   }, [spaceId]);
 
   async function saveField(field, value) {
@@ -100,6 +105,11 @@ export default function SpaceDetail() {
   function handlePedagogicalMode(newMode) {
     setPedagogicalMode(newMode);
     saveField('pedagogical_mode', newMode);
+    if (newMode === 'socratique') {
+      supabase.from('curriculum_nodes').select('id', { count: 'exact', head: true })
+        .eq('space_id', spaceId)
+        .then(({ count }) => setHasCurriculum((count ?? 0) > 0));
+    }
   }
 
   function handleRelancesThreshold(value) {
@@ -255,6 +265,12 @@ export default function SpaceDetail() {
             </div>
           )}
         </div>
+
+        {pedagogicalMode === 'socratique' && !hasCurriculum && (
+          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700" style={{borderLeft:'3px solid #f97316'}}>
+            <strong>Bilans de session désactivés.</strong> Les rappels de progression, la carte de notions et le message personnalisé nécessitent un curriculum défini dans l'onglet Curriculum.
+          </div>
+        )}
 
         {/* Contexte pédagogique */}
         <div className="bg-white border rounded p-4 mt-4" style={{borderLeft:'3px solid var(--teal)'}}>
