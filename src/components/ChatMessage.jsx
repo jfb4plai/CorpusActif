@@ -6,11 +6,113 @@ const SOCRATIC_INDICATORS = {
   reponse: { color: 'bg-green-500', label: 'Réponse' },
 };
 
-export default function ChatMessage({ role, content, sources, chunksCount, isOutOfBase, socraticLevel, onFeedback, isNotionOpener, isIntro, isOutro, flashDeckId }) {
+function formatTimeSince(isoDate) {
+  if (!isoDate) return null;
+  const diff = Date.now() - new Date(isoDate).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return 'aujourd\'hui';
+  if (days === 1) return 'hier';
+  if (days < 7) return `il y a ${days} jours`;
+  if (days < 14) return 'la semaine dernière';
+  return `il y a ${Math.floor(days / 7)} semaines`;
+}
+
+export default function ChatMessage({
+  role, content, sources, chunksCount, isOutOfBase, socraticLevel, onFeedback,
+  isNotionOpener, isIntro, isOutro, flashDeckId,
+  isRecap, previousNotions, lastSessionDate,
+  isNotionMap, notions, notionOutcomes,
+  isDebrief,
+}) {
   // feedbackSent est éphémère — si les messages sont chargés depuis la DB au montage,
   // dériver l'état initial depuis m.helpful !== null
   const [feedbackSent, setFeedbackSent] = useState(false);
   const isUser = role === 'user';
+
+  // Recap: retour de session avec notions acquises/non acquises
+  if (isRecap && previousNotions && previousNotions.length > 0) {
+    const acquired = previousNotions.filter(n => n.acquired);
+    const notAcquired = previousNotions.filter(n => !n.acquired);
+    const since = formatTimeSince(lastSessionDate);
+    return (
+      <div className="flex justify-center mb-6">
+        <div className="w-full max-w-md bg-white px-5 py-4 text-sm" style={{border:'1px solid var(--border)', borderLeft:'3px solid var(--teal)', borderRadius:'4px'}}>
+          <p className="font-bold tracking-tight mb-3" style={{color:'var(--teal)'}}>
+            {since ? `Bon retour — ${since}.` : 'Bon retour.'}
+          </p>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {acquired.map(n => (
+              <span key={n.concept} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 font-medium" style={{background:'#dcfce7', color:'#166534', borderRadius:'4px'}}>
+                ✓ {n.concept}
+              </span>
+            ))}
+            {notAcquired.map(n => (
+              <span key={n.concept} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 font-medium" style={{background:'var(--surface2)', color:'var(--text3)', borderRadius:'4px'}}>
+                ○ {n.concept}
+              </span>
+            ))}
+          </div>
+          {notAcquired.length > 0 && (
+            <p className="text-xs" style={{color:'var(--text2)'}}>
+              Il t'en reste {notAcquired.length}. Reprends où tu t'étais arrêté.
+            </p>
+          )}
+          {notAcquired.length === 0 && (
+            <p className="text-xs" style={{color:'var(--text2)'}}>
+              Tu avais tout parcouru. Une nouvelle session pour consolider ?
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Notion Map: vue d'ensemble du parcours (mastered / acquired_with_hint / failed)
+  if (isNotionMap && notions && notionOutcomes) {
+    const mastered = notions.filter(n => notionOutcomes[n.concept] === 'mastered');
+    const withHint = notions.filter(n => notionOutcomes[n.concept] === 'acquired_with_hint');
+    const failed = notions.filter(n => notionOutcomes[n.concept] === 'failed');
+    return (
+      <div className="flex justify-center mb-6">
+        <div className="w-full max-w-md px-5 py-4 text-sm" style={{background:'#f0fdf4', border:'1px solid #bbf7d0', borderLeft:'3px solid var(--teal)', borderRadius:'4px'}}>
+          <p className="label-upper mb-3">Ton parcours</p>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {mastered.map(n => (
+              <span key={n.concept} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 font-medium" style={{background:'#0a9370', color:'white', borderRadius:'4px'}}>
+                ✓ {n.concept}
+              </span>
+            ))}
+            {withHint.map(n => (
+              <span key={n.concept} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 font-medium" style={{background:'#d1fae5', color:'#065f46', borderRadius:'4px'}}>
+                ~ {n.concept}
+              </span>
+            ))}
+            {failed.map(n => (
+              <span key={n.concept} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 font-medium" style={{background:'#fff7ed', color:'#9a3412', borderRadius:'4px'}}>
+                ✗ {n.concept}
+              </span>
+            ))}
+          </div>
+          <p className="text-xs" style={{color:'var(--text2)'}}>
+            {mastered.length > 0 && `${mastered.length} maîtrisée${mastered.length > 1 ? 's' : ''}`}
+            {withHint.length > 0 && ` · ${withHint.length} comprise${withHint.length > 1 ? 's' : ''} avec indice`}
+            {failed.length > 0 && ` · ${failed.length} à retravailler`}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Debrief: message de fin de session, centré
+  if (isDebrief) {
+    return (
+      <div className="flex justify-center mb-6">
+        <div className="w-full max-w-md px-5 py-4 text-sm" style={{background:'#fff7ed', border:'1px solid #fed7aa', borderLeft:'3px solid var(--orange)', borderRadius:'4px'}}>
+          <p className="leading-relaxed" style={{color:'var(--text)'}}>{content}</p>
+        </div>
+      </div>
+    );
+  }
 
   // Messages spéciaux notion — style centré distinct
   if (isNotionOpener || isIntro || isOutro) {
