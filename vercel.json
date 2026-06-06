@@ -1,7 +1,8 @@
 {
   "functions": {
     "api/embed.js": { "maxDuration": 60 },
-    "api/chat.js": { "maxDuration": 30 }
+    "api/chat.js": { "maxDuration": 30 },
+    "api/chat-debrief.js": { "maxDuration": 15 }
   },
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
 }
