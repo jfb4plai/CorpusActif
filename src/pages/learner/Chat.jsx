@@ -29,6 +29,12 @@ export default function Chat() {
   const [notionTransitioning, setNotionTransitioning] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [flashDeckId, setFlashDeckId] = useState(null);
+  const [hasCurriculum, setHasCurriculum] = useState(false);
+  const [previousNotions, setPreviousNotions] = useState([]);
+  const [lastSessionDate, setLastSessionDate] = useState(null);
+  const [notionOutcomes, setNotionOutcomes] = useState({});
+  const [hintsForCurrentNotion, setHintsForCurrentNotion] = useState(0);
+  const [debriefLoading, setDebriefLoading] = useState(false);
   const bottomRef = useRef();
 
   useEffect(() => {
@@ -58,19 +64,37 @@ export default function Chat() {
     fetch('/api/chat-init', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ token, learner_code: learnerCode || null }),
     })
       .then(r => r.json())
       .then(data => {
         if (data.flashcard_deck_id) setFlashDeckId(data.flashcard_deck_id);
+        if (data.has_curriculum) setHasCurriculum(true);
+        if (data.previous_notions?.length > 0) {
+          setPreviousNotions(data.previous_notions);
+          setLastSessionDate(data.last_session_date || null);
+        }
         if (data.notions && data.notions.length > 0) {
           setNotions(data.notions);
-          setMessages([{
+          const msgs = [];
+          // Injecter le rappel d'ouverture si curriculum + sessions précédentes
+          if (data.has_curriculum && data.previous_notions?.length > 0) {
+            msgs.push({
+              role: 'assistant',
+              content: '',
+              rawContent: '',
+              isRecap: true,
+              previousNotions: data.previous_notions,
+              lastSessionDate: data.last_session_date || null,
+            });
+          }
+          msgs.push({
             role: 'assistant',
             content: `Ce parcours comporte ${data.total} notion${data.total > 1 ? 's' : ''}. Commençons.`,
             rawContent: `Ce parcours comporte ${data.total} notion${data.total > 1 ? 's' : ''}. Commençons.`,
             isIntro: true,
-          }]);
+          });
+          setMessages(msgs);
           setTimeout(() => {
             openNotion(data.notions, 0);
             setSessionReady(true);
@@ -120,6 +144,32 @@ export default function Chat() {
       const level = getSocraticLevel(rawAnswer);
       const displayContent = stripMarker(rawAnswer);
 
+      // Tracker les indices et outcomes de notions
+      const currentConcept = notions[notionIndex]?.concept;
+      let updatedOutcomes = { ...notionOutcomes };
+
+      if (rawAnswer.startsWith('[INDICE]')) {
+        setHintsForCurrentNotion(prev => prev + 1);
+      }
+
+      if (currentConcept) {
+        if (rawAnswer.startsWith('[NOTION_SUIVANTE]')) {
+          updatedOutcomes = {
+            ...updatedOutcomes,
+            [currentConcept]: hintsForCurrentNotion === 0 ? 'mastered' : 'acquired_with_hint',
+          };
+          setNotionOutcomes(updatedOutcomes);
+          setHintsForCurrentNotion(0);
+        } else if (rawAnswer.startsWith('[RÉPONSE]')) {
+          updatedOutcomes = {
+            ...updatedOutcomes,
+            [currentConcept]: 'failed',
+          };
+          setNotionOutcomes(updatedOutcomes);
+          setHintsForCurrentNotion(0);
+        }
+      }
+
       const isNotionAcquired = rawAnswer.startsWith('[NOTION_SUIVANTE]');
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -137,13 +187,13 @@ export default function Chat() {
       // Passer à la notion suivante si acquise
       if (isNotionAcquired && notions.length > 0) {
         setNotionTransitioning(true);
-        setTimeout(() => { openNotion(notions, notionIndex + 1); setNotionTransitioning(false); }, 1200);
+        setTimeout(() => { openNotion(notions, notionIndex + 1, updatedOutcomes); setNotionTransitioning(false); }, 1200);
       }
 
       // Passer à la notion suivante si [RÉPONSE] sans acquisition (timeout)
       if (!isNotionAcquired && rawAnswer.startsWith('[RÉPONSE]') && notions.length > 0) {
         setNotionTransitioning(true);
-        setTimeout(() => { openNotion(notions, notionIndex + 1); setNotionTransitioning(false); }, 1800);
+        setTimeout(() => { openNotion(notions, notionIndex + 1, updatedOutcomes); setNotionTransitioning(false); }, 1800);
       }
     } catch (err) {
       setError(err.message);
@@ -152,15 +202,73 @@ export default function Chat() {
     }
   }
 
-  function openNotion(notionsList, index) {
+  function openNotion(notionsList, index, currentOutcomes = {}) {
+    setHintsForCurrentNotion(0); // reset pour la nouvelle notion
     if (index >= notionsList.length) {
+      // 1. Carte de notions
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Tu as parcouru toutes les notions de cet espace. Bien joué.',
-        rawContent: 'Tu as parcouru toutes les notions de cet espace. Bien joué.',
-        isOutro: true,
-        flashDeckId,
+        content: '',
+        rawContent: '',
+        isNotionMap: true,
+        notions: notionsList,
+        notionOutcomes: currentOutcomes,
       }]);
+
+      // 2. Message final + debrief Haiku (avec délai pour effet séquentiel)
+      setTimeout(async () => {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'Tu as parcouru toutes les notions de cet espace. Bien joué.',
+          rawContent: 'Tu as parcouru toutes les notions de cet espace. Bien joué.',
+          isOutro: true,
+          flashDeckId,
+        }]);
+
+        setDebriefLoading(true);
+        try {
+          const notions_mastered = Object.entries(currentOutcomes)
+            .filter(([, v]) => v === 'mastered').map(([k]) => k);
+          const notions_with_hint = Object.entries(currentOutcomes)
+            .filter(([, v]) => v === 'acquired_with_hint').map(([k]) => k);
+          const notions_failed = Object.entries(currentOutcomes)
+            .filter(([, v]) => v === 'failed').map(([k]) => k);
+
+          // Échantillon des échanges de la session courante
+          const sessionExchanges = messages
+            .filter(m => m.role === 'user' || (m.role === 'assistant' && !m.isRecap && !m.isIntro && !m.isNotionOpener && !m.isNotionMap))
+            .map(m => ({ role: m.role, content: m.rawContent || m.content }));
+
+          const res = await fetch('/api/chat-debrief', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              token,
+              notions_mastered,
+              notions_with_hint,
+              notions_failed,
+              session_exchanges: sessionExchanges,
+            }),
+          });
+          const debriefData = await res.json();
+          const debriefText = debriefData.debrief || 'Bonne consolidation avec FlashFWB.';
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: debriefText,
+            rawContent: debriefText,
+            isDebrief: true,
+          }]);
+        } catch {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: 'Bonne consolidation.',
+            rawContent: 'Bonne consolidation.',
+            isDebrief: true,
+          }]);
+        } finally {
+          setDebriefLoading(false);
+        }
+      }, 400);
       return;
     }
     const n = notionsList[index];
@@ -257,6 +365,11 @@ export default function Chat() {
         {loading && (
           <div className="flex justify-start mb-4">
             <div className="bg-white border rounded-2xl px-4 py-3 text-sm text-gray-400">…</div>
+          </div>
+        )}
+        {debriefLoading && (
+          <div className="flex justify-center mb-4">
+            <div className="text-xs px-4 py-2" style={{color:'var(--text3)'}}>Analyse du parcours…</div>
           </div>
         )}
         {error && <p className="text-center text-red-500 text-xs mb-4">{error}</p>}
