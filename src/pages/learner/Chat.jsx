@@ -41,7 +41,7 @@ export default function Chat() {
     try {
       const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
       const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
-      const payload = JSON.parse(atob(padded));
+      const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(padded), c => c.charCodeAt(0))));
       if (payload.learner_code) {
         setLearnerCode(payload.learner_code);
         setCodeSubmitted(true);
