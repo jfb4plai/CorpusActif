@@ -33,9 +33,16 @@ export default async function handler(req, res) {
     .eq('id', space_id)
     .single();
 
-  if (!space || space.pedagogical_mode !== 'socratique') {
+  if (!space) {
     return res.status(200).json({
-      notions: [], total: 0, space_name: space?.name || '',
+      notions: [], total: 0, space_name: '', reason: 'space_not_found',
+      has_curriculum: false, previous_notions: [], last_session_date: null,
+      flashcard_deck_id: null,
+    });
+  }
+  if (space.pedagogical_mode !== 'socratique') {
+    return res.status(200).json({
+      notions: [], total: 0, space_name: space.name, reason: `mode_${space.pedagogical_mode}`,
       has_curriculum: false, previous_notions: [], last_session_date: null,
       flashcard_deck_id: null,
     });
@@ -101,7 +108,7 @@ export default async function handler(req, res) {
 
   if (!chunks || chunks.length === 0) {
     return res.status(200).json({
-      notions: [], total: 0, space_name: space.name,
+      notions: [], total: 0, space_name: space.name, reason: 'no_chunks',
       has_curriculum: false, previous_notions: [], last_session_date: null,
       flashcard_deck_id: null,
     });
@@ -126,15 +133,17 @@ export default async function handler(req, res) {
       ? parsed.filter(n => n.concept).map(n => ({ concept: n.concept, definition: n.definition || '' }))
       : [];
 
+    const reason = notions.length === 0 ? 'extraction_empty' : undefined;
     return res.status(200).json({
       notions, total: notions.length, space_name: space.name,
       flashcard_deck_id: space.flashcard_deck_id || null,
       has_curriculum: false, previous_notions: [], last_session_date: null,
+      ...(reason && { reason }),
     });
   } catch (err) {
     console.error('[chat-init] notion extraction failed:', err.message);
     return res.status(200).json({
-      notions: [], total: 0, space_name: space.name,
+      notions: [], total: 0, space_name: space.name, reason: `extraction_error: ${err.message}`,
       has_curriculum: false, previous_notions: [], last_session_date: null,
       flashcard_deck_id: null,
     });

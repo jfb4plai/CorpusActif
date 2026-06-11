@@ -100,9 +100,17 @@ export default function Chat() {
             setSessionReady(true);
           }, 600);
         } else {
+          const reason = data.reason || 'unknown';
+          const msg = reason === 'no_chunks'
+            ? "Aucun document n'est indexé pour cet espace. Contacte ton enseignant."
+            : reason.startsWith('mode_')
+              ? `Cet espace n'est pas en mode socratique (mode actuel : ${reason.replace('mode_', '')}).`
+              : reason === 'space_not_found'
+                ? "Espace introuvable. Le lien est peut-être invalide."
+                : `Aucune notion chargée (${reason}). Contacte ton enseignant.`;
           setMessages([{
             role: 'assistant',
-            content: "Aucune notion n'a pu être chargée pour cet espace. Vérifie qu'au moins un document a bien été indexé.",
+            content: msg,
             rawContent: '',
             isIntro: true,
           }]);
