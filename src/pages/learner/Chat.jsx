@@ -209,7 +209,7 @@ export default function Chat() {
       // Passer à la notion suivante si acquise
       if (isNotionAcquired && notions.length > 0) {
         setNotionTransitioning(true);
-        setTimeout(() => { openNotion(notions, notionIndex + 1, updatedOutcomes); setNotionTransitioning(false); }, 1200);
+        setTimeout(() => { openNotion(notions, notionIndex + 1, updatedOutcomes); setNotionTransitioning(false); }, 3000);
       }
 
       // Passer à la notion suivante si [RÉPONSE] sans acquisition (timeout)

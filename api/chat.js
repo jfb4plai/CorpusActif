@@ -82,7 +82,7 @@ function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, histor
     ? `\nNotion en cours d'exploration (${notionIndex + 1}/${notionTotal}) : "${notionConcept}".
 Tu guides l'apprenant UNIQUEMENT sur cette notion.
 Si sa question porte sur une autre notion, réponds très brièvement et ramène-le à "${notionConcept}".
-Quand tu estimes que l'apprenant a compris cette notion, commence OBLIGATOIREMENT ta réponse par [NOTION_SUIVANTE] suivi d'une phrase valorisant ce qu'il a compris.\n`
+Quand tu estimes que l'apprenant a compris cette notion, commence OBLIGATOIREMENT ta réponse par [NOTION_SUIVANTE] suivi d'une seule phrase de valorisation courte. Ne pose PAS de nouvelle question — la notion suivante sera présentée automatiquement.\n`
     : '';
 
   const historySection = previousSessionMessages.length > 0
