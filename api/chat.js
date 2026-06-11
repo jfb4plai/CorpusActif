@@ -252,7 +252,8 @@ export default async function handler(req, res) {
   const answer = message.content[0].text
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/#{1,6}\s/g, '');
+    .replace(/#{1,6}\s/g, '')
+    .replace(/\?\s+([A-ZÀ-Ÿ«"'])/g, '?\n\n$1');
 
   // Stocker le message et récupérer son id pour le feedback
   const { data: savedMessage, error: insertError } = await supabase.from('messages').insert({
