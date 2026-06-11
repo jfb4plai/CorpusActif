@@ -1,8 +1,12 @@
 {
   "functions": {
     "api/embed.js": { "maxDuration": 60 },
+    "api/embed-from-url.js": { "maxDuration": 60 },
     "api/chat.js": { "maxDuration": 30 },
-    "api/chat-debrief.js": { "maxDuration": 15 }
+    "api/chat-init.js": { "maxDuration": 30 },
+    "api/chat-debrief.js": { "maxDuration": 15 },
+    "api/generate-flashcards.js": { "maxDuration": 30 },
+    "api/handoff.js": { "maxDuration": 15 }
   },
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
 }
