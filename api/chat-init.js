@@ -119,7 +119,7 @@ export default async function handler(req, res) {
   try {
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 800,
+      max_tokens: 2048,
       messages: [{
         role: 'user',
         content: `Analyse ces extraits de cours et identifie TOUTES les notions-clés que l'apprenant doit comprendre. Il peut y en avoir 1 comme 20 — adapte-toi au contenu, sans limite artificielle.\n\n${excerpt}\n\nRéponds en JSON strict uniquement, sans texte avant ou après :\n[{"concept": "...", "definition": "..."}]`,
