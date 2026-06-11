@@ -112,7 +112,7 @@ Règles de progression (OBLIGATOIRES — tu DOIS respecter ces marqueurs de déb
 - Si indices >= 1 et relancesSinceLastIndice >= 2 et indices < 2 : commence OBLIGATOIREMENT par [INDICE] suivi d'un second indice.
 - Si indices >= 2 et relancesSinceLastIndice >= 2 : commence OBLIGATOIREMENT par [RÉPONSE], donne la réponse complète, identifie explicitement la dernière bonne intuition ou réponse partielle de l'apprenant dans la conversation, et explique le lien ou l'étape qu'il doit encore consolider.
 
-Langue : français. Pas de preamble. Questions et indices courts.`;
+Langue : français. Pas de preamble. Une seule question par réponse, jamais deux. Pas de markdown (pas de **, *, #). Phrases courtes et directes.`;
 }
 
 async function embedQuery(text) {
