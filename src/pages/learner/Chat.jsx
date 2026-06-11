@@ -100,10 +100,24 @@ export default function Chat() {
             setSessionReady(true);
           }, 600);
         } else {
+          setMessages([{
+            role: 'assistant',
+            content: "Aucune notion n'a pu être chargée pour cet espace. Vérifie qu'au moins un document a bien été indexé.",
+            rawContent: '',
+            isIntro: true,
+          }]);
           setSessionReady(true);
         }
       })
-      .catch(() => setSessionReady(true));
+      .catch(() => {
+        setMessages([{
+          role: 'assistant',
+          content: 'Le chargement du parcours a échoué. Réessaie dans quelques instants.',
+          rawContent: '',
+          isIntro: true,
+        }]);
+        setSessionReady(true);
+      });
   }, [codeSubmitted, isSocratic]);
 
   async function sendMessage(e) {
