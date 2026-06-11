@@ -298,6 +298,21 @@ export default function Chat() {
       return;
     }
     const n = notionsList[index];
+
+    // Sauter les notions déjà acquises en session précédente
+    const prevOutcome = previousNotions.find(p => p.concept === n.concept);
+    if (prevOutcome?.acquired === true) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `Notion ${index + 1}/${notionsList.length} : ${n.concept} — déjà maîtrisée lors d'une session précédente. On passe.`,
+        rawContent: '',
+        isNotionOpener: true,
+        notionConcept: n.concept,
+      }]);
+      setTimeout(() => openNotion(notionsList, index + 1, { ...currentOutcomes, [n.concept]: 'mastered' }), 1500);
+      return;
+    }
+
     setNotionIndex(index);
     setMessages(prev => [...prev, {
       role: 'assistant',
