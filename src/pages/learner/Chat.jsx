@@ -19,6 +19,7 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [initLoading, setInitLoading] = useState(false);
   const [error, setError] = useState('');
   const [learnerCode, setLearnerCode] = useState('');
   const [codeSubmitted, setCodeSubmitted] = useState(false);
@@ -61,6 +62,7 @@ export default function Chat() {
   useEffect(() => {
     if (!codeSubmitted || !isSocratic) { setSessionReady(true); return; }
 
+    setInitLoading(true);
     fetch('/api/chat-init', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -68,6 +70,7 @@ export default function Chat() {
     })
       .then(r => r.json())
       .then(data => {
+        setInitLoading(false);
         if (data.flashcard_deck_id) setFlashDeckId(data.flashcard_deck_id);
         if (data.has_curriculum) setHasCurriculum(true);
         if (data.previous_notions?.length > 0) {
@@ -118,6 +121,7 @@ export default function Chat() {
         }
       })
       .catch(() => {
+        setInitLoading(false);
         setMessages([{
           role: 'assistant',
           content: 'Le chargement du parcours a échoué. Réessaie dans quelques instants.',
@@ -362,15 +366,18 @@ export default function Chat() {
             </p>
             <p className="text-sm text-gray-500 mt-2">
               {isSocratic
-                ? (sessionReady
-                    ? 'Prépare-toi — la première notion arrive.'
-                    : <span className="inline-flex items-center gap-2">
-                        <svg className="animate-spin h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                        </svg>
-                        Chargement du parcours…
-                      </span>)
+                ? (initLoading
+                    ? <span className="inline-flex flex-col items-center gap-2">
+                        <span className="inline-flex items-center gap-2">
+                          <svg className="animate-spin h-4 w-4 text-[#0a9370]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                          </svg>
+                          Préparation du parcours en cours…
+                        </span>
+                        <span className="text-xs text-gray-400">Cela peut prendre jusqu'à une minute.</span>
+                      </span>
+                    : 'Prépare-toi — la première notion arrive.')
                 : 'Pose ta première question…'}
             </p>
           </div>
