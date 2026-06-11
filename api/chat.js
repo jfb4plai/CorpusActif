@@ -249,7 +249,10 @@ export default async function handler(req, res) {
     messages: conversationMessages,
   });
 
-  const answer = message.content[0].text;
+  const answer = message.content[0].text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/#{1,6}\s/g, '');
 
   // Stocker le message et récupérer son id pour le feedback
   const { data: savedMessage, error: insertError } = await supabase.from('messages').insert({
