@@ -250,11 +250,22 @@ export default async function handler(req, res) {
     messages: conversationMessages,
   });
 
-  const answer = message.content[0].text
+  let answer = message.content[0].text
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/#{1,6}\s/g, '')
     .replace(/\?\s+([A-ZÀ-Ÿ«"'])/g, '?\n\n$1');
+
+  // Si le modèle oublie le marqueur [NOTION_SUIVANTE] mais signale clairement la transition
+  const NOTION_SUIVANTE_PATTERNS = [
+    /notion suivante/i, /passons à la suite/i, /on peut passer à/i,
+    /tu as bien compris/i, /c'est acquis/i, /c'est maîtrisé/i,
+  ];
+  if (notion_concept && !answer.startsWith('[NOTION_SUIVANTE]') && !answer.startsWith('[RÉPONSE]') && !answer.startsWith('[INDICE]')) {
+    if (NOTION_SUIVANTE_PATTERNS.some(p => p.test(answer))) {
+      answer = '[NOTION_SUIVANTE] ' + answer;
+    }
+  }
 
   // Stocker le message et récupérer son id pour le feedback
   const { data: savedMessage, error: insertError } = await supabase.from('messages').insert({
