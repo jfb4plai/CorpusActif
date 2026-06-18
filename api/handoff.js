@@ -127,6 +127,6 @@ export default async function handler(req, res) {
 
   const baseUrl = process.env.RETROACTIF_URL || 'https://retroactif.jfb4plai.com';
   return res.status(200).json({
-    url: `${baseUrl}/module6?handoff=${handoff.id}`,
+    url: `${baseUrl}/constructeur?handoff=${handoff.id}`,
   });
 }
