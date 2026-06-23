@@ -176,7 +176,8 @@ alter table messages
 
 -- Feature : description des obstacles fonctionnels par code apprenant
 alter table learner_codes
-  add column if not exists difficulties text;
+  add column if not exists difficulties text,
+  add column if not exists difficulties_updated_at timestamptz;
 
 -- Feature : connexions aux savoirs antérieurs (fin de notion)
 create table if not exists corpus_notion_connections (

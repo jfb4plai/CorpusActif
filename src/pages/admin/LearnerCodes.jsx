@@ -78,8 +78,9 @@ export default function LearnerCodes({ spaceId, session }) {
 
   async function saveDifficulties(id) {
     const value = difficultiesValues[id] ?? '';
-    await supabase.from('learner_codes').update({ difficulties: value || null }).eq('id', id);
-    setCodes(prev => prev.map(c => c.id === id ? { ...c, difficulties: value || null } : c));
+    const now = new Date().toISOString();
+    await supabase.from('learner_codes').update({ difficulties: value || null, difficulties_updated_at: value ? now : null }).eq('id', id);
+    setCodes(prev => prev.map(c => c.id === id ? { ...c, difficulties: value || null, difficulties_updated_at: value ? now : null } : c));
   }
 
   async function generateSpaceQR() {
@@ -185,11 +186,17 @@ export default function LearnerCodes({ spaceId, session }) {
                     className="w-full text-xs border rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700"
                     rows={3}
                   />
-                  <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                    Décris ce que tu <em>observes</em> en classe — pas le trouble diagnostiqué. Ex : "perd le fil après 2 phrases" plutôt que "dyslexique". L'outil ajustera ses questions pour vérifier que l'obstacle n'a pas masqué la compréhension, sans baisser le niveau.
-                    <br />
-                    <span className="text-gray-300">Claus, 2016, cité dans Reverdy, IFÉ, 2017.</span>
-                  </p>
+                  <div className="flex items-start justify-between mt-1 gap-2">
+                    <p className="text-xs text-gray-400 leading-relaxed">
+                      Décris ce que tu <em>observes</em> en classe — pas le trouble diagnostiqué. Ex : "perd le fil après 2 phrases" plutôt que "dyslexique". L'outil ajustera ses questions pour vérifier que l'obstacle n'a pas masqué la compréhension, sans baisser le niveau.
+                      {' '}<span className="text-gray-300">Claus, 2016, cité dans Reverdy, IFÉ, 2017.</span>
+                    </p>
+                    {c.difficulties_updated_at && (
+                      <span className="text-xs text-gray-300 shrink-0 whitespace-nowrap">
+                        Mis à jour le {new Date(c.difficulties_updated_at).toLocaleDateString('fr-BE')}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
