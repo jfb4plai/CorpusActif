@@ -174,6 +174,26 @@ alter table messages
   add column if not exists notion_concept text,
   add column if not exists notion_acquired boolean;
 
+-- Feature : description des obstacles fonctionnels par code apprenant
+alter table learner_codes
+  add column if not exists difficulties text;
+
+-- Feature : connexions aux savoirs antérieurs (fin de notion)
+create table if not exists corpus_notion_connections (
+  id uuid primary key default gen_random_uuid(),
+  space_id uuid references spaces on delete cascade not null,
+  learner_code text,
+  notion_concept text not null,
+  connection_text text,
+  skipped boolean not null default false,
+  created_at timestamptz default now()
+);
+alter table corpus_notion_connections enable row level security;
+create policy "corpus_notion_connections_owner" on corpus_notion_connections
+  for all using (space_id in (select id from spaces where user_id = auth.uid()));
+create policy "corpus_notion_connections_service" on corpus_notion_connections
+  for insert with check (true);
+
 -- Templates de curriculum (strictement personnels)
 create table if not exists curriculum_templates (
   id uuid primary key default gen_random_uuid(),

@@ -36,6 +36,9 @@ export default function Chat() {
   const [notionOutcomes, setNotionOutcomes] = useState({});
   const [hintsForCurrentNotion, setHintsForCurrentNotion] = useState(0);
   const [debriefLoading, setDebriefLoading] = useState(false);
+  const [connectionPrompt, setConnectionPrompt] = useState(null);
+  const [connectionInput, setConnectionInput] = useState('');
+  const [connectionLoading, setConnectionLoading] = useState(false);
   const bottomRef = useRef();
 
   useEffect(() => {
@@ -210,10 +213,14 @@ export default function Chat() {
         isNotionAcquired,
       }]);
 
-      // Passer à la notion suivante si acquise
+      // Passer à la notion suivante si acquise — attendre la connexion aux savoirs
       if (isNotionAcquired && notions.length > 0) {
-        setNotionTransitioning(true);
-        setTimeout(() => { openNotion(notions, notionIndex + 1, updatedOutcomes); setNotionTransitioning(false); }, 3000);
+        setConnectionPrompt({
+          notionConcept: currentConcept,
+          nextIndex: notionIndex + 1,
+          outcomes: updatedOutcomes,
+        });
+        setConnectionInput('');
       }
 
       // Passer à la notion suivante si [RÉPONSE] sans acquisition (timeout)
@@ -335,6 +342,50 @@ export default function Chat() {
     }
   }
 
+  async function handleConnectionSubmit(e) {
+    e.preventDefault();
+    if (!connectionPrompt) return;
+    setConnectionLoading(true);
+    try {
+      await fetch('/api/notion-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          notion_concept: connectionPrompt.notionConcept,
+          connection_text: connectionInput,
+          skipped: false,
+        }),
+      });
+    } catch { /* silencieux */ }
+    const { nextIndex, outcomes } = connectionPrompt;
+    setConnectionPrompt(null);
+    setConnectionInput('');
+    setConnectionLoading(false);
+    openNotion(notions, nextIndex, outcomes);
+  }
+
+  async function handleConnectionSkip() {
+    if (!connectionPrompt) return;
+    setConnectionLoading(true);
+    try {
+      await fetch('/api/notion-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          notion_concept: connectionPrompt.notionConcept,
+          skipped: true,
+        }),
+      });
+    } catch { /* silencieux */ }
+    const { nextIndex, outcomes } = connectionPrompt;
+    setConnectionPrompt(null);
+    setConnectionInput('');
+    setConnectionLoading(false);
+    openNotion(notions, nextIndex, outcomes);
+  }
+
   if (!codeSubmitted) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -419,28 +470,64 @@ export default function Chat() {
         {error && <p className="text-center text-red-500 text-xs mb-4">{error}</p>}
         <div ref={bottomRef} />
       </div>
-      <form onSubmit={sendMessage} className="border-t bg-white px-4 py-3 max-w-2xl mx-auto w-full">
-        {input.length >= 800 && (
-          <div className="text-right text-xs text-gray-400 mb-1">{input.length} / 1000</div>
-        )}
-        <div className="flex gap-2">
-        <input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder="Pose ta question…"
-          maxLength={1000}
-          className="flex-1 border rounded px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-          disabled={loading || !sessionReady || notionTransitioning}
-        />
-        <button
-          type="submit"
-          disabled={loading || !input.trim() || notionTransitioning}
-          className="bg-[#0a9370] text-white px-5 py-2 rounded text-sm font-semibold disabled:opacity-50"
-        >
-          Envoyer
-        </button>
+      {connectionPrompt ? (
+        <div className="border-t bg-white px-4 py-4 max-w-2xl mx-auto w-full">
+          <p className="text-sm text-gray-700 mb-2 font-medium">
+            Avant de continuer — en quelques mots, quel lien fais-tu entre <span className="text-[#0a9370]">{connectionPrompt.notionConcept}</span> et ce que tu savais déjà ?
+          </p>
+          <form onSubmit={handleConnectionSubmit} className="flex flex-col gap-2">
+            <textarea
+              value={connectionInput}
+              onChange={e => setConnectionInput(e.target.value)}
+              placeholder="Ex : ça me rappelle… / ça ressemble à… / avant je pensais que…"
+              className="w-full border rounded px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500"
+              rows={3}
+              maxLength={500}
+              disabled={connectionLoading}
+            />
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                type="button"
+                onClick={handleConnectionSkip}
+                disabled={connectionLoading}
+                className="text-xs text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              >
+                Passer
+              </button>
+              <button
+                type="submit"
+                disabled={connectionLoading || !connectionInput.trim()}
+                className="bg-[#0a9370] text-white px-5 py-2 rounded text-sm font-semibold disabled:opacity-50"
+              >
+                {connectionLoading ? '…' : 'Envoyer'}
+              </button>
+            </div>
+          </form>
         </div>
-      </form>
+      ) : (
+        <form onSubmit={sendMessage} className="border-t bg-white px-4 py-3 max-w-2xl mx-auto w-full">
+          {input.length >= 800 && (
+            <div className="text-right text-xs text-gray-400 mb-1">{input.length} / 1000</div>
+          )}
+          <div className="flex gap-2">
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              placeholder="Pose ta question…"
+              maxLength={1000}
+              className="flex-1 border rounded px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              disabled={loading || !sessionReady || notionTransitioning}
+            />
+            <button
+              type="submit"
+              disabled={loading || !input.trim() || notionTransitioning}
+              className="bg-[#0a9370] text-white px-5 py-2 rounded text-sm font-semibold disabled:opacity-50"
+            >
+              Envoyer
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

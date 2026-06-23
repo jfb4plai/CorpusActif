@@ -56,7 +56,7 @@ Langue : français. Pas de preamble. Réponses courtes et directes.
 Si tu cites une information, indique le titre du document source entre crochets.`;
 }
 
-function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, history, curriculumNodes = [], previousSessionMessages = [], relancesThreshold = 5, notionConcept = null, notionTotal = 0, notionIndex = 0) {
+function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, history, curriculumNodes = [], previousSessionMessages = [], relancesThreshold = 5, notionConcept = null, notionTotal = 0, notionIndex = 0, learnerDifficulties = null) {
   const docMap = Object.fromEntries(documents.map(d => [d.id, d.title]));
   const contextBlocks = chunks.map(c =>
     `[Source : ${docMap[c.document_id] || 'Document'}]\n${c.content}`
@@ -95,10 +95,14 @@ Quand tu estimes que l'apprenant a compris cette notion, commence OBLIGATOIREMEN
       }\n`
     : '';
 
+  const difficultiesSection = learnerDifficulties
+    ? `\nObstacles fonctionnels observés par l'enseignant pour cet apprenant :\n${learnerDifficulties}\n\nAdapte la formulation de tes questions pour éviter que ces obstacles interfèrent avec l'accès à la notion visée. Ne réduis pas le niveau de questionnement — vérifie que l'obstacle ne masque pas la compréhension. Si une réponse est lacunaire, envisage d'abord que l'obstacle décrit en est la cause avant de conclure à une non-compréhension.\n`
+    : '';
+
   return `Tu es un assistant pédagogique socratique pour l'espace "${spaceName}".
 Tu guides l'apprenant vers la réponse par des questions et indices TIRÉS UNIQUEMENT des ressources ci-dessous.
 Tu ne peux pas introduire de notions, exemples ou explications absents des ressources — même si tu les connais.
-${curriculumSection}${historySection}${notionSection}
+${curriculumSection}${historySection}${difficultiesSection}${notionSection}
 Ressources disponibles :
 
 ${contextBlocks}
@@ -186,6 +190,18 @@ export default async function handler(req, res) {
     curriculumNodes = nodes || [];
   }
 
+  // Charger les obstacles fonctionnels (mode socratique uniquement)
+  let learnerDifficulties = null;
+  if (pedagogicalMode === 'socratique' && learner_code) {
+    const { data: learnerData } = await supabase
+      .from('learner_codes')
+      .select('difficulties')
+      .eq('space_id', space_id)
+      .eq('code', learner_code)
+      .single();
+    learnerDifficulties = learnerData?.difficulties || null;
+  }
+
   // Charger l'historique inter-sessions (mode socratique uniquement)
   let previousSessionMessages = [];
   if (pedagogicalMode === 'socratique' && learner_code) {
@@ -231,7 +247,7 @@ export default async function handler(req, res) {
 
   // Choisir le prompt selon le mode pédagogique
   const systemPrompt = pedagogicalMode === 'socratique'
-    ? buildSocraticPrompt(space.name, chunks || [], space.out_of_base_mode, documents, history, curriculumNodes, previousSessionMessages, relancesThreshold, notion_concept, notion_total, notion_index)
+    ? buildSocraticPrompt(space.name, chunks || [], space.out_of_base_mode, documents, history, curriculumNodes, previousSessionMessages, relancesThreshold, notion_concept, notion_total, notion_index, learnerDifficulties)
     : buildDirectPrompt(space.name, chunks || [], space.out_of_base_mode, documents);
 
   // Construire les messages avec historique (mode socratique)

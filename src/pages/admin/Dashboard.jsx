@@ -8,6 +8,7 @@ export default function Dashboard({ spaceId }) {
   const [blockedQuestions, setBlockedQuestions] = useState([]);
   const [handoffLoading, setHandoffLoading] = useState(null);
   const [handoffError, setHandoffError] = useState('');
+  const [connections, setConnections] = useState([]);
 
   useEffect(() => {
     async function load() {
@@ -54,6 +55,13 @@ export default function Dashboard({ spaceId }) {
 
       setStats({ total, outOfBase, truncated: messages.length === 500 });
       setByCode(Object.entries(codeMap).sort((a, b) => b[1].total - a[1].total));
+
+      const { data: connData } = await supabase
+        .from('corpus_notion_connections')
+        .select('learner_code, notion_concept, connection_text, skipped, created_at')
+        .eq('space_id', spaceId)
+        .order('created_at', { ascending: false });
+      setConnections(connData || []);
 
       // Agrégation par notion (dernière valeur par apprenant × notion)
       const notionMap = {};
@@ -171,6 +179,45 @@ export default function Dashboard({ spaceId }) {
           ))}
         </div>
       </div>
+
+      {connections.filter(c => !c.skipped).length > 0 && (() => {
+        const byNotion = {};
+        connections.forEach(c => {
+          if (!byNotion[c.notion_concept]) byNotion[c.notion_concept] = [];
+          byNotion[c.notion_concept].push(c);
+        });
+        return (
+          <div>
+            <h3 className="label-upper mb-1">Connexions aux savoirs antérieurs</h3>
+            <p className="text-xs text-gray-400 mb-3">Ce que les apprenants ont associé à la notion une fois acquise.</p>
+            <div className="space-y-2">
+              {Object.entries(byNotion).map(([concept, items]) => {
+                const answered = items.filter(i => !i.skipped);
+                const skipped = items.filter(i => i.skipped);
+                return (
+                  <details key={concept} className="bg-white border rounded">
+                    <summary className="flex items-center justify-between px-4 py-3 cursor-pointer text-sm">
+                      <span className="font-medium text-gray-800 truncate max-w-xs">{concept}</span>
+                      <span className="text-xs text-gray-400 shrink-0 ml-2">
+                        {answered.length} réponse{answered.length !== 1 ? 's' : ''}
+                        {skipped.length > 0 && <span className="ml-2 text-gray-300">{skipped.length} passé{skipped.length !== 1 ? 's' : ''}</span>}
+                      </span>
+                    </summary>
+                    <div className="px-4 pb-3 border-t space-y-2 pt-2">
+                      {answered.map((item, idx) => (
+                        <div key={idx} className="flex items-start gap-3">
+                          <span className="text-xs text-gray-400 shrink-0 pt-0.5 w-8">{item.learner_code || '?'}</span>
+                          <p className="text-xs text-gray-700 italic">"{item.connection_text}"</p>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {Object.keys(notionAcquisition).length > 0 && (
         <div>

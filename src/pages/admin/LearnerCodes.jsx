@@ -16,6 +16,8 @@ export default function LearnerCodes({ spaceId, session }) {
   const [expiresDays, setExpiresDays] = useState(30);
   const [showSessions, setShowSessions] = useState(false);
   const [confirmDeleteCode, setConfirmDeleteCode] = useState(null);
+  const [difficultiesOpen, setDifficultiesOpen] = useState({});
+  const [difficultiesValues, setDifficultiesValues] = useState({});
 
   async function loadCodes() {
     const { data } = await supabase
@@ -65,6 +67,19 @@ export default function LearnerCodes({ spaceId, session }) {
     await supabase.from('learner_codes').delete().eq('id', id);
     setCodes(prev => prev.filter(c => c.id !== id));
     setConfirmDeleteCode(null);
+  }
+
+  function toggleDifficulties(id, currentValue) {
+    setDifficultiesOpen(prev => ({ ...prev, [id]: !prev[id] }));
+    if (!difficultiesValues.hasOwnProperty(id)) {
+      setDifficultiesValues(prev => ({ ...prev, [id]: currentValue || '' }));
+    }
+  }
+
+  async function saveDifficulties(id) {
+    const value = difficultiesValues[id] ?? '';
+    await supabase.from('learner_codes').update({ difficulties: value || null }).eq('id', id);
+    setCodes(prev => prev.map(c => c.id === id ? { ...c, difficulties: value || null } : c));
   }
 
   async function generateSpaceQR() {
@@ -119,31 +134,63 @@ export default function LearnerCodes({ spaceId, session }) {
           </button>
         </div>
         <p className="text-xs text-gray-400 mb-3">Le QR Code commun est un code unique à afficher au tableau. Chaque apprenant scanne le même et saisit son code personnel à l'arrivée.</p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="space-y-2">
           {codes.map(c => (
-            <div key={c.id} className="bg-white border rounded px-3 py-2 flex items-center justify-between hover:border-teal-400 transition">
-              <button
-                onClick={() => generateQR(c.code)}
-                disabled={generatingQr === c.code}
-                className="text-sm font-medium text-gray-700 text-left"
-              >
-                {c.code}
-                <span className="block text-xs text-gray-400 font-normal mt-0.5">Générer QR</span>
-              </button>
-              {confirmDeleteCode === c.id ? (
-                <div className="flex items-center gap-2 ml-2">
-                  <span className="text-xs text-red-500">Supprimer ?</span>
-                  <button onClick={() => deleteCode(c.id)} className="text-xs text-red-500 font-medium hover:text-red-700">Oui</button>
-                  <button onClick={() => setConfirmDeleteCode(null)} className="text-xs text-gray-400 hover:text-gray-600">Non</button>
-                </div>
-              ) : (
+            <div key={c.id} className="bg-white border rounded hover:border-teal-400 transition">
+              <div className="flex items-center justify-between px-3 py-2">
                 <button
-                  onClick={e => { e.stopPropagation(); setConfirmDeleteCode(c.id); }}
-                  className="text-gray-300 hover:text-red-400 transition text-xs ml-2"
-                  title="Supprimer ce code"
+                  onClick={() => generateQR(c.code)}
+                  disabled={generatingQr === c.code}
+                  className="text-sm font-medium text-gray-700 text-left"
                 >
-                  ✕
+                  {generatingQr === c.code ? '…' : c.code}
+                  <span className="block text-xs text-gray-400 font-normal mt-0.5">Générer QR</span>
                 </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => toggleDifficulties(c.id, c.difficulties)}
+                    className={`text-xs px-2 py-0.5 rounded border transition ${difficultiesOpen[c.id] ? 'border-teal-400 text-teal-600 bg-teal-50' : 'border-gray-200 text-gray-400 hover:border-teal-300 hover:text-teal-500'}`}
+                    title="Profil d'accès de l'apprenant"
+                  >
+                    {c.difficulties ? 'Profil ✓' : 'Profil'}
+                  </button>
+                  {confirmDeleteCode === c.id ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-500">Supprimer ?</span>
+                      <button onClick={() => deleteCode(c.id)} className="text-xs text-red-500 font-medium hover:text-red-700">Oui</button>
+                      <button onClick={() => setConfirmDeleteCode(null)} className="text-xs text-gray-400 hover:text-gray-600">Non</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={e => { e.stopPropagation(); setConfirmDeleteCode(c.id); }}
+                      className="text-gray-300 hover:text-red-400 transition text-xs"
+                      title="Supprimer ce code"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {difficultiesOpen[c.id] && (
+                <div className="px-3 pb-3 border-t border-gray-100">
+                  <label className="text-xs font-medium text-gray-600 block mt-2 mb-1">
+                    Obstacles observés en classe
+                  </label>
+                  <textarea
+                    value={difficultiesValues[c.id] ?? (c.difficulties || '')}
+                    onChange={e => setDifficultiesValues(prev => ({ ...prev, [c.id]: e.target.value }))}
+                    onBlur={() => saveDifficulties(c.id)}
+                    placeholder="Ex : lit lentement, perd le sens sur les phrases longues — difficultés de décodage."
+                    className="w-full text-xs border rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700"
+                    rows={3}
+                  />
+                  <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                    Décris ce que tu <em>observes</em> en classe — pas le trouble diagnostiqué. Ex : "perd le fil après 2 phrases" plutôt que "dyslexique". L'outil ajustera ses questions pour vérifier que l'obstacle n'a pas masqué la compréhension, sans baisser le niveau.
+                    <br />
+                    <span className="text-gray-300">Claus, 2016, cité dans Reverdy, IFÉ, 2017.</span>
+                  </p>
+                </div>
               )}
             </div>
           ))}
