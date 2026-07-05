@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/admin/Login';
+import ResetPassword from './pages/admin/ResetPassword';
 import AdminLayout from './pages/admin/AdminLayout';
 import Spaces from './pages/admin/Spaces';
 import SpaceDetail from './pages/admin/SpaceDetail';
@@ -10,6 +11,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Spaces />} />
           <Route path="spaces/:spaceId" element={<SpaceDetail />} />
