@@ -446,8 +446,8 @@ export default function Chat() {
         const inProgress = current && notionOutcomes[current] === undefined ? 0.5 : 0;
         const pct = Math.min(100, Math.round(((done + inProgress) / total) * 100));
         return (
-          <div className="h-2 bg-teal-100" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Progression du parcours">
-            <div className="h-full bg-[#0a9370] transition-all duration-700 ease-out" style={{ width: `${pct}%` }} />
+          <div className="h-2.5 bg-gray-200" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Progression du parcours">
+            <div className="h-full bg-[#0a9370] transition-all duration-700 ease-out rounded-r-full" style={{ width: `${pct}%` }} />
           </div>
         );
       })()}
