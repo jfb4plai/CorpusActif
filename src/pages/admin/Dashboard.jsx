@@ -50,12 +50,12 @@ export default function Dashboard({ spaceId }) {
     async function load() {
       const [{ data: messages }, { data: nodes }, { data: codes }, { data: space }, { data: connData }] =
         await Promise.all([
-          supabase.from('messages')
+          supabase.from('corpus_messages')
             .select('learner_code, question, answer, is_out_of_base, helpful, notion_concept, notion_acquired, created_at')
             .eq('space_id', spaceId).order('created_at', { ascending: false }).limit(500),
-          supabase.from('curriculum_nodes').select('concept').eq('space_id', spaceId).order('created_at'),
-          supabase.from('learner_codes').select('code, difficulties').eq('space_id', spaceId),
-          supabase.from('spaces').select('class_acquisition_threshold').eq('id', spaceId).single(),
+          supabase.from('corpus_curriculum_nodes').select('concept').eq('space_id', spaceId).order('created_at'),
+          supabase.from('corpus_learner_codes').select('code, difficulties').eq('space_id', spaceId),
+          supabase.from('corpus_spaces').select('class_acquisition_threshold').eq('id', spaceId).single(),
           supabase.from('corpus_notion_connections')
             .select('learner_code, notion_concept, connection_text, skipped, created_at')
             .eq('space_id', spaceId).order('created_at', { ascending: false }),

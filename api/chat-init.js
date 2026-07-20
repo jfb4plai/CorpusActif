@@ -28,7 +28,7 @@ export default async function handler(req, res) {
   const code = learner_code || payload.learner_code || null;
 
   const { data: space } = await supabase
-    .from('spaces')
+    .from('corpus_spaces')
     .select('name, pedagogical_mode, flashcard_deck_id')
     .eq('id', space_id)
     .single();
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
 
   // SOURCE A : curriculum_nodes (seule source qui active les bookends)
   const { data: nodes } = await supabase
-    .from('curriculum_nodes')
+    .from('corpus_curriculum_nodes')
     .select('concept, definition')
     .eq('space_id', space_id)
     .order('created_at');
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
     if (code) {
       // Dernière valeur notion_acquired par concept pour ce code × espace
       const { data: prevMsgs } = await supabase
-        .from('messages')
+        .from('corpus_messages')
         .select('notion_concept, notion_acquired, created_at')
         .eq('space_id', space_id)
         .eq('learner_code', code)
@@ -101,7 +101,7 @@ export default async function handler(req, res) {
 
   // SOURCE B : extraction Claude — bookends désactivés (has_curriculum: false)
   const { data: chunks } = await supabase
-    .from('chunks')
+    .from('corpus_chunks')
     .select('content')
     .eq('space_id', space_id)
     .limit(20);

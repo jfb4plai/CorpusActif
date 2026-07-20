@@ -15,7 +15,7 @@ export default async function handler(req, res) {
 
   // Récupérer le nom de l'espace pour l'inclure dans le token
   const { data: space } = await supabase
-    .from('spaces')
+    .from('corpus_spaces')
     .select('name, pedagogical_mode')
     .eq('id', space_id)
     .single();
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     .sign(jwtSecret);
 
   // Persister la session dans Supabase
-  const { error } = await supabase.from('sessions').insert({
+  const { error } = await supabase.from('corpus_sessions').insert({
     space_id,
     learner_code: learner_code || null,
     token,

@@ -28,7 +28,7 @@ export default async function handler(req, res) {
 
   // Update avec triple garde : id + space_id + learner_code
   const { data, error } = await supabase
-    .from('messages')
+    .from('corpus_messages')
     .update({ helpful })
     .eq('id', message_id)
     .eq('space_id', space_id)

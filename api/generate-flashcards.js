@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   );
 
   const { data: space, error: spaceError } = await userClient
-    .from('spaces')
+    .from('corpus_spaces')
     .select('name, flashcard_deck_id')
     .eq('id', space_id)
     .single();
@@ -38,14 +38,14 @@ export default async function handler(req, res) {
 
   // === SOURCE A : Curriculum ===
   const { data: curriculumNodes } = await supabaseService
-    .from('curriculum_nodes')
+    .from('corpus_curriculum_nodes')
     .select('concept, definition, level')
     .eq('space_id', space_id)
     .order('created_at');
 
   // === SOURCE B : Questions bloquées (précédant un [INDICE]) ===
   const { data: allMessages } = await supabaseService
-    .from('messages')
+    .from('corpus_messages')
     .select('question, answer')
     .eq('space_id', space_id)
     .order('created_at', { ascending: false })
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
 
   // === SOURCE C : Échantillon de chunks ===
   const { data: chunks } = await supabaseService
-    .from('chunks')
+    .from('corpus_chunks')
     .select('content')
     .eq('space_id', space_id)
     .limit(15);
@@ -151,7 +151,7 @@ Langue : français. JSON uniquement.`,
 
     // Persister le lien dans l'espace
     const { error: linkError } = await supabaseService
-      .from('spaces')
+      .from('corpus_spaces')
       .update({ flashcard_deck_id: deckId })
       .eq('id', space_id);
     if (linkError) return res.status(500).json({ error: linkError.message });

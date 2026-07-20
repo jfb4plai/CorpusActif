@@ -60,7 +60,7 @@ export default function SpaceDetail() {
   const [hasCurriculum, setHasCurriculum] = useState(false);
 
   useEffect(() => {
-    supabase.from('spaces').select('*').eq('id', spaceId).single()
+    supabase.from('corpus_spaces').select('*').eq('id', spaceId).single()
       .then(({ data }) => {
         if (data) {
           setSpace(data);
@@ -75,13 +75,13 @@ export default function SpaceDetail() {
         }
       });
     // Vérifier présence curriculum pour avertissement bookends
-    supabase.from('curriculum_nodes').select('id', { count: 'exact', head: true })
+    supabase.from('corpus_curriculum_nodes').select('id', { count: 'exact', head: true })
       .eq('space_id', spaceId)
       .then(({ count }) => setHasCurriculum((count ?? 0) > 0));
   }, [spaceId]);
 
   async function saveField(field, value) {
-    await supabase.from('spaces').update({ [field]: value }).eq('id', spaceId);
+    await supabase.from('corpus_spaces').update({ [field]: value }).eq('id', spaceId);
   }
 
   function handleOutOfBaseMode(newMode) {
@@ -108,7 +108,7 @@ export default function SpaceDetail() {
     setPedagogicalMode(newMode);
     saveField('pedagogical_mode', newMode);
     if (newMode === 'socratique') {
-      supabase.from('curriculum_nodes').select('id', { count: 'exact', head: true })
+      supabase.from('corpus_curriculum_nodes').select('id', { count: 'exact', head: true })
         .eq('space_id', spaceId)
         .then(({ count }) => setHasCurriculum((count ?? 0) > 0));
     }

@@ -164,7 +164,7 @@ export default async function handler(req, res) {
 
   // Récupérer la session par son token (vérifie existence et non-révocation)
   const { data: session } = await supabase
-    .from('sessions')
+    .from('corpus_sessions')
     .select('id')
     .eq('token', token)
     .single();
@@ -173,7 +173,7 @@ export default async function handler(req, res) {
 
   // Charger l'espace (avec les nouveaux champs)
   const { data: space } = await supabase
-    .from('spaces')
+    .from('corpus_spaces')
     .select('name, out_of_base_mode, similarity_threshold, pedagogical_mode, socratic_relances_threshold')
     .eq('id', space_id)
     .single();
@@ -188,7 +188,7 @@ export default async function handler(req, res) {
   let curriculumNodes = [];
   if (pedagogicalMode === 'socratique') {
     const { data: nodes } = await supabase
-      .from('curriculum_nodes')
+      .from('corpus_curriculum_nodes')
       .select('concept, definition, level')
       .eq('space_id', space_id)
       .order('created_at');
@@ -199,7 +199,7 @@ export default async function handler(req, res) {
   let learnerDifficulties = null;
   if (pedagogicalMode === 'socratique' && learner_code) {
     const { data: learnerData } = await supabase
-      .from('learner_codes')
+      .from('corpus_learner_codes')
       .select('difficulties')
       .eq('space_id', space_id)
       .eq('code', learner_code)
@@ -211,7 +211,7 @@ export default async function handler(req, res) {
   let previousSessionMessages = [];
   if (pedagogicalMode === 'socratique' && learner_code) {
     const { data: prevMsgs } = await supabase
-      .from('messages')
+      .from('corpus_messages')
       .select('question, answer')
       .eq('space_id', space_id)
       .eq('learner_code', learner_code)
@@ -236,7 +236,7 @@ export default async function handler(req, res) {
   }
 
   // Chercher les chunks similaires
-  const { data: chunks } = await supabase.rpc('match_chunks', {
+  const { data: chunks } = await supabase.rpc('corpus_match_chunks', {
     query_embedding: queryEmbedding,
     match_space_id: space_id,
     match_threshold: threshold,
@@ -250,7 +250,7 @@ export default async function handler(req, res) {
   if (chunks && chunks.length > 0) {
     const docIds = [...new Set(chunks.map(c => c.document_id))];
     const { data } = await supabase
-      .from('documents')
+      .from('corpus_documents')
       .select('id, title')
       .in('id', docIds);
     documents = data || [];
@@ -307,7 +307,7 @@ export default async function handler(req, res) {
   }
 
   // Stocker le message et récupérer son id pour le feedback
-  const { data: savedMessage, error: insertError } = await supabase.from('messages').insert({
+  const { data: savedMessage, error: insertError } = await supabase.from('corpus_messages').insert({
     session_id: session.id,
     space_id,
     learner_code: learner_code || null,

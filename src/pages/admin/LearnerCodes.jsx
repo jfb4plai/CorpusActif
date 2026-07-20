@@ -21,7 +21,7 @@ export default function LearnerCodes({ spaceId, session }) {
 
   async function loadCodes() {
     const { data } = await supabase
-      .from('learner_codes')
+      .from('corpus_learner_codes')
       .select('*')
       .eq('space_id', spaceId)
       .order('created_at');
@@ -30,7 +30,7 @@ export default function LearnerCodes({ spaceId, session }) {
 
   async function loadSessions() {
     const { data } = await supabase
-      .from('sessions')
+      .from('corpus_sessions')
       .select('id, learner_code, expires_at, created_at')
       .eq('space_id', spaceId)
       .order('created_at', { ascending: false });
@@ -40,14 +40,14 @@ export default function LearnerCodes({ spaceId, session }) {
   useEffect(() => { loadCodes(); loadSessions(); }, [spaceId]);
 
   async function revokeSession(id) {
-    await supabase.from('sessions').delete().eq('id', id);
+    await supabase.from('corpus_sessions').delete().eq('id', id);
     setSessions(prev => prev.filter(s => s.id !== id));
   }
 
   async function addCodes() {
     const newCodes = generateCodeList(prefix, count);
     const rows = newCodes.map(code => ({ space_id: spaceId, code }));
-    await supabase.from('learner_codes').upsert(rows, { onConflict: 'space_id,code' });
+    await supabase.from('corpus_learner_codes').upsert(rows, { onConflict: 'space_id,code' });
     loadCodes();
   }
 
@@ -64,7 +64,7 @@ export default function LearnerCodes({ spaceId, session }) {
   }
 
   async function deleteCode(id) {
-    await supabase.from('learner_codes').delete().eq('id', id);
+    await supabase.from('corpus_learner_codes').delete().eq('id', id);
     setCodes(prev => prev.filter(c => c.id !== id));
     setConfirmDeleteCode(null);
   }
@@ -79,7 +79,7 @@ export default function LearnerCodes({ spaceId, session }) {
   async function saveDifficulties(id) {
     const value = difficultiesValues[id] ?? '';
     const now = new Date().toISOString();
-    await supabase.from('learner_codes').update({ difficulties: value || null, difficulties_updated_at: value ? now : null }).eq('id', id);
+    await supabase.from('corpus_learner_codes').update({ difficulties: value || null, difficulties_updated_at: value ? now : null }).eq('id', id);
     setCodes(prev => prev.map(c => c.id === id ? { ...c, difficulties: value || null, difficulties_updated_at: value ? now : null } : c));
   }
 

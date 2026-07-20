@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
     // Vérifier que la session existe
     const { data: session } = await supabase
-      .from('sessions')
+      .from('corpus_sessions')
       .select('id')
       .eq('token', token)
       .single();

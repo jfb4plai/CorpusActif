@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   const { space_id, learner_code } = payload;
 
   const { data: session } = await supabase
-    .from('sessions')
+    .from('corpus_sessions')
     .select('id')
     .eq('token', token)
     .single();

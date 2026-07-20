@@ -16,7 +16,7 @@ export default function Curriculum({ spaceId, session }) {
 
   async function loadNodes() {
     const { data } = await supabase
-      .from('curriculum_nodes')
+      .from('corpus_curriculum_nodes')
       .select('*')
       .eq('space_id', spaceId)
       .order('created_at');
@@ -25,7 +25,7 @@ export default function Curriculum({ spaceId, session }) {
 
   async function loadTemplates() {
     const { data } = await supabase
-      .from('curriculum_templates')
+      .from('corpus_curriculum_templates')
       .select('id, name, nodes')
       .order('created_at', { ascending: false });
     setTemplates(data || []);
@@ -59,7 +59,7 @@ export default function Curriculum({ spaceId, session }) {
     setTemplateMsg('');
     const snap = nodes.map(({ concept, definition, level }) => ({ concept, definition, level: level || null }));
     const { error } = await supabase
-      .from('curriculum_templates')
+      .from('corpus_curriculum_templates')
       .insert({ user_id: session.user.id, name: templateName.trim(), nodes: snap });
     setSavingTemplate(false);
     if (error) {
@@ -80,11 +80,11 @@ export default function Curriculum({ spaceId, session }) {
     // Supprimer les nœuds existants (une seule requête)
     const ids = nodes.map(n => n.id);
     if (ids.length > 0) {
-      await supabase.from('curriculum_nodes').delete().in('id', ids);
+      await supabase.from('corpus_curriculum_nodes').delete().in('id', ids);
     }
     // Insérer les nœuds du template (un seul insert)
     if (tpl.nodes.length > 0) {
-      await supabase.from('curriculum_nodes').insert(
+      await supabase.from('corpus_curriculum_nodes').insert(
         tpl.nodes.map(n => ({
           space_id: spaceId,
           concept: n.concept,
@@ -99,7 +99,7 @@ export default function Curriculum({ spaceId, session }) {
 
   async function deleteTemplate(id, name) {
     if (!window.confirm(`Supprimer le modèle "${name}" ?`)) return;
-    await supabase.from('curriculum_templates').delete().eq('id', id);
+    await supabase.from('corpus_curriculum_templates').delete().eq('id', id);
     loadTemplates();
   }
 

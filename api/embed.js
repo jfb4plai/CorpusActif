@@ -88,7 +88,7 @@ export default async function handler(req, res) {
 
   // Vérifier que l'utilisateur est propriétaire du space (RLS filtre automatiquement)
   const { data: spaceCheck, error: spaceError } = await userClient
-    .from('spaces')
+    .from('corpus_spaces')
     .select('id')
     .eq('id', space_id)
     .single();
@@ -99,7 +99,7 @@ export default async function handler(req, res) {
 
   // Créer le document
   const { data: doc, error: docError } = await supabase
-    .from('documents')
+    .from('corpus_documents')
     .insert({ space_id, user_id, title, type: type || 'text' })
     .select()
     .single();
@@ -126,7 +126,7 @@ export default async function handler(req, res) {
     embedding: allEmbeddings[i],
   }));
 
-  const { error: chunksError } = await supabase.from('chunks').insert(rows);
+  const { error: chunksError } = await supabase.from('corpus_chunks').insert(rows);
   if (chunksError) return res.status(500).json({ error: chunksError.message });
 
   return res.status(200).json({ document_id: doc.id, chunks_created: rows.length });

@@ -75,7 +75,7 @@ export default async function handler(req, res) {
   );
 
   const { data: space, error: spaceError } = await userClient
-    .from('spaces')
+    .from('corpus_spaces')
     .select('name, niveau, matiere')
     .eq('id', space_id)
     .single();
@@ -84,7 +84,7 @@ export default async function handler(req, res) {
 
   // Charger les messages de cet apprenant (50 derniers)
   const { data: rawMessages } = await supabaseService
-    .from('messages')
+    .from('corpus_messages')
     .select('question, answer, created_at')
     .eq('space_id', space_id)
     .eq('learner_code', learner_code)
@@ -109,7 +109,7 @@ export default async function handler(req, res) {
 
   // Écrire le handoff
   const { data: handoff, error: handoffError } = await supabaseService
-    .from('handoffs')
+    .from('corpus_handoffs')
     .insert({
       user_id: user.id,
       eleve_code: learner_code,

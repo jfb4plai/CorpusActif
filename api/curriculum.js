@@ -15,7 +15,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     const { data, error } = await supabase
-      .from('curriculum_nodes')
+      .from('corpus_curriculum_nodes')
       .select('*')
       .eq('space_id', space_id)
       .order('created_at');
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const { concept, definition, level, parent_id } = req.body;
     const { data, error } = await supabase
-      .from('curriculum_nodes')
+      .from('corpus_curriculum_nodes')
       .insert({ space_id, concept, definition, level, parent_id })
       .select()
       .single();
@@ -37,7 +37,7 @@ export default async function handler(req, res) {
   if (req.method === 'PUT') {
     const { id, concept, definition, level, parent_id } = req.body;
     const { data, error } = await supabase
-      .from('curriculum_nodes')
+      .from('corpus_curriculum_nodes')
       .update({ concept, definition, level, parent_id })
       .eq('id', id)
       .select()
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
   if (req.method === 'DELETE') {
     const { id } = req.body;
     const { error } = await supabase
-      .from('curriculum_nodes')
+      .from('corpus_curriculum_nodes')
       .delete()
       .eq('id', id);
     if (error) return res.status(500).json({ error: error.message });

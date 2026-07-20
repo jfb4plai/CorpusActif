@@ -10,7 +10,7 @@ export default function Spaces() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.from('spaces').select('*').order('created_at', { ascending: false })
+    supabase.from('corpus_spaces').select('*').order('created_at', { ascending: false })
       .then(({ data }) => setSpaces(data || []));
   }, []);
 
@@ -18,7 +18,7 @@ export default function Spaces() {
     e.preventDefault();
     if (!newName.trim()) return;
     const { data, error } = await supabase
-      .from('spaces')
+      .from('corpus_spaces')
       .insert({ name: newName.trim(), user_id: session.user.id })
       .select()
       .single();
@@ -29,7 +29,7 @@ export default function Spaces() {
   }
 
   async function deleteSpace(id) {
-    await supabase.from('spaces').delete().eq('id', id);
+    await supabase.from('corpus_spaces').delete().eq('id', id);
     setSpaces(prev => prev.filter(s => s.id !== id));
     setConfirmDelete(null);
   }
