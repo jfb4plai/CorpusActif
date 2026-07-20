@@ -437,14 +437,20 @@ export default function Chat() {
         )}
         <span className="ml-auto text-xs opacity-70">{learnerCode}</span>
       </header>
-      {notions.length > 0 && (
-        <div className="h-1.5 bg-teal-100" role="progressbar" aria-label="Progression du parcours">
-          <div
-            className="h-full bg-[#0a9370] transition-all duration-700 ease-out"
-            style={{ width: `${Math.round((Object.keys(notionOutcomes).length / notions.length) * 100)}%` }}
-          />
-        </div>
-      )}
+      {notions.length > 0 && (() => {
+        // Progression hybride : les notions bouclées comptent pour 1, la notion
+        // en cours pour 0,5 — la barre avance dès la première notion (jamais figée à 0).
+        const total = notions.length;
+        const done = Object.keys(notionOutcomes).length;
+        const current = notions[notionIndex]?.concept;
+        const inProgress = current && notionOutcomes[current] === undefined ? 0.5 : 0;
+        const pct = Math.min(100, Math.round(((done + inProgress) / total) * 100));
+        return (
+          <div className="h-2 bg-teal-100" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Progression du parcours">
+            <div className="h-full bg-[#0a9370] transition-all duration-700 ease-out" style={{ width: `${pct}%` }} />
+          </div>
+        );
+      })()}
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-2xl mx-auto w-full">
         {messages.length === 0 && (
           <div className={`mt-16 mx-auto max-w-sm bg-white rounded-2xl px-6 py-5 text-center border ${isSocratic ? 'border-orange-200' : 'border-gray-100'}`}>
