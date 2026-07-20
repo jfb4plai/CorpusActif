@@ -182,6 +182,21 @@ create policy "corpus_notion_connections_owner" on corpus_notion_connections
 create policy "corpus_notion_connections_service" on corpus_notion_connections
   for insert with check (true);
 
+-- Confirmation de lecture avant le démarrage du parcours socratique
+-- (signal déclaratif de l'apprenant, visible par l'enseignant au tableau de bord)
+create table if not exists corpus_material_confirmations (
+  id uuid primary key default gen_random_uuid(),
+  space_id uuid references corpus_spaces on delete cascade not null,
+  learner_code text,
+  confirmed boolean not null,
+  created_at timestamptz default now()
+);
+alter table corpus_material_confirmations enable row level security;
+create policy "corpus_material_confirmations_owner" on corpus_material_confirmations
+  for all using (space_id in (select id from corpus_spaces where user_id = auth.uid()));
+create policy "corpus_material_confirmations_service" on corpus_material_confirmations
+  for insert with check (true);
+
 -- Templates de curriculum (strictement personnels)
 create table corpus_curriculum_templates (
   id uuid primary key default gen_random_uuid(),

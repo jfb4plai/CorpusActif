@@ -345,18 +345,28 @@ export default function Chat() {
 
   function handleReadiness(confirmed) {
     setReadinessPrompt(false);
-    if (!confirmed) {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: "Pas de souci — jette d'abord un œil aux ressources de ton enseignant, ou demande-lui. Tu peux aussi commencer directement si tu préfères t'y frotter maintenant.",
-        rawContent: '',
-        isIntro: true,
-      }]);
-    }
+
+    // Enregistrer la réponse — visible ensuite par l'enseignant au tableau de bord
+    fetch('/api/material-confirmation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, confirmed, learner_code: learnerCode || null }),
+    }).catch(() => { /* signal silencieux — ne bloque pas le parcours */ });
+
+    // Laisser une trace visible dans le fil plutôt que de faire disparaître la question sans réponse enregistrée
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: confirmed
+        ? 'Lecture confirmée — noté pour ton enseignant.'
+        : "Pas encore lu — noté. Jette un œil aux ressources de ton enseignant quand tu peux ; tu peux aussi continuer maintenant.",
+      rawContent: '',
+      isReadinessRecap: true,
+    }]);
+
     setTimeout(() => {
       openNotion(pendingNotions, 0);
       setSessionReady(true);
-    }, confirmed ? 400 : 1400);
+    }, confirmed ? 500 : 1600);
   }
 
   async function sendFeedback(messageId, helpful) {

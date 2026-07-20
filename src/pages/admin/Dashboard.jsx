@@ -48,7 +48,7 @@ export default function Dashboard({ spaceId }) {
 
   useEffect(() => {
     async function load() {
-      const [{ data: messages }, { data: nodes }, { data: codes }, { data: space }, { data: connData }] =
+      const [{ data: messages }, { data: nodes }, { data: codes }, { data: space }, { data: connData }, { data: confirmations }] =
         await Promise.all([
           supabase.from('corpus_messages')
             .select('learner_code, question, answer, is_out_of_base, helpful, notion_concept, notion_acquired, created_at')
@@ -58,6 +58,9 @@ export default function Dashboard({ spaceId }) {
           supabase.from('corpus_spaces').select('class_acquisition_threshold').eq('id', spaceId).single(),
           supabase.from('corpus_notion_connections')
             .select('learner_code, notion_concept, connection_text, skipped, created_at')
+            .eq('space_id', spaceId).order('created_at', { ascending: false }),
+          supabase.from('corpus_material_confirmations')
+            .select('learner_code, confirmed, created_at')
             .eq('space_id', spaceId).order('created_at', { ascending: false }),
         ]);
 
@@ -98,6 +101,13 @@ export default function Dashboard({ spaceId }) {
       // ---- Suivi d'acquisition ----
       const threshold = space?.class_acquisition_threshold ?? 0.30;
       const difficultiesByCode = Object.fromEntries((codes || []).map(c => [c.code, c.difficulties || null]));
+
+      // Confirmation de lecture la plus récente par apprenant (ordre déjà DESC)
+      const readinessByCode = {};
+      (confirmations || []).forEach(c => {
+        const code = c.learner_code || '(sans code)';
+        if (!(code in readinessByCode)) readinessByCode[code] = c.confirmed;
+      });
 
       // Codes : inscrits (dénominateur classe) + actifs (colonnes)
       const activeCodes = [...new Set(messages.map(m => m.learner_code).filter(Boolean))];
@@ -140,7 +150,7 @@ export default function Dashboard({ spaceId }) {
         .sort((a, b) => a.pct - b.pct);
 
       setAcq({
-        rows, cols, enrolled, statusOf, classStats, difficultiesByCode,
+        rows, cols, enrolled, statusOf, classStats, difficultiesByCode, readinessByCode,
         reaborder, hasCurriculum: curriculumConcepts.length > 0, threshold,
       });
     }
@@ -332,13 +342,22 @@ export default function Dashboard({ spaceId }) {
         <div className="space-y-2">
           {byCode.map(([code, data]) => {
             const diff = acq?.difficultiesByCode?.[code];
+            const readiness = acq?.readinessByCode?.[code];
             const learnerNotions = acq?.hasCurriculum
               ? acq.rows.filter(r => r.inCurriculum).map(({ concept }) => ({ concept, status: acq.statusOf(concept, code) }))
               : [];
             return (
               <details key={code} className="bg-white border rounded">
                 <summary className="flex items-center justify-between px-4 py-3 cursor-pointer text-sm">
-                  <span className="font-medium text-gray-800">{code}</span>
+                  <span className="font-medium text-gray-800 flex items-center gap-2">
+                    {code}
+                    {readiness === true && (
+                      <span className="text-xs" title="A confirmé avoir déjà vu la matière">📖 ✓</span>
+                    )}
+                    {readiness === false && (
+                      <span className="text-xs" title="A indiqué ne pas encore avoir vu la matière">📖 ?</span>
+                    )}
+                  </span>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-gray-400">
                       {data.total} question{data.total > 1 ? 's' : ''}

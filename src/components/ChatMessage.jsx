@@ -22,7 +22,7 @@ export default function ChatMessage({
   isNotionOpener, isIntro, isOutro, flashDeckId,
   isRecap, previousNotions, lastSessionDate,
   isNotionMap, notions, notionOutcomes,
-  isDebrief, isCelebration,
+  isDebrief, isCelebration, isReadinessRecap,
 }) {
   // feedbackSent est éphémère — si les messages sont chargés depuis la DB au montage,
   // dériver l'état initial depuis m.helpful !== null
@@ -110,6 +110,18 @@ export default function ChatMessage({
         <div className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-full" style={{ background: '#dcfce7', color: '#166534' }}>
           <span aria-hidden="true">✓</span>
           <span className="font-medium">{content}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Trace de la réponse à la question de lecture préalable
+  if (isReadinessRecap) {
+    return (
+      <div className="flex justify-center mb-4">
+        <div className="inline-flex items-center gap-2 text-xs px-4 py-2 rounded-full" style={{ background: '#f1f5f9', color: '#475569' }}>
+          <span aria-hidden="true">📖</span>
+          <span>{content}</span>
         </div>
       </div>
     );
