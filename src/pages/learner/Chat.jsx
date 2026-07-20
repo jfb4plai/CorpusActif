@@ -430,11 +430,6 @@ export default function Chat() {
         {isSocratic && (
           <span className="text-xs bg-[#f97316] px-2 py-0.5 rounded-full font-medium">Socratique</span>
         )}
-        {notions.length > 0 && notionIndex < notions.length && (
-          <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
-            {notionIndex + 1}/{notions.length}
-          </span>
-        )}
         <span className="ml-auto text-xs opacity-70">{learnerCode}</span>
       </header>
       {notions.length > 0 && (() => {
@@ -446,8 +441,22 @@ export default function Chat() {
         const inProgress = current && notionOutcomes[current] === undefined ? 0.5 : 0;
         const pct = Math.min(100, Math.round(((done + inProgress) / total) * 100));
         return (
-          <div className="h-2.5 bg-gray-200" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Progression du parcours">
-            <div className="h-full bg-[#0a9370] transition-all duration-700 ease-out rounded-r-full" style={{ width: `${pct}%` }} />
+          <div className="bg-white border-b px-4 py-2.5">
+            <div className="flex items-center justify-between max-w-2xl mx-auto w-full mb-1.5 gap-3">
+              <span className="text-xs font-medium text-gray-700 truncate">
+                {spaceName || 'Ce parcours'}
+                {current && <span className="text-gray-400 font-normal"> — {current}</span>}
+              </span>
+              <span className="text-xs text-gray-400 shrink-0">
+                Notion {Math.min(notionIndex + 1, total)}/{total}
+              </span>
+            </div>
+            <div
+              className="h-2 bg-gray-200 rounded-full overflow-hidden max-w-2xl mx-auto w-full"
+              role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Progression du parcours"
+            >
+              <div className="h-full bg-[#0a9370] transition-all duration-700 ease-out rounded-full" style={{ width: `${pct}%` }} />
+            </div>
           </div>
         );
       })()}
