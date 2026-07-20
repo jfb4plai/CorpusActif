@@ -195,6 +195,12 @@ create policy "corpus_notion_connections_owner" on corpus_notion_connections
 create policy "corpus_notion_connections_service" on corpus_notion_connections
   for insert with check (true);
 
+-- Seuil d'alerte "notion à réaborder en classe" : pourcentage de la classe
+-- en dessous duquel une notion est signalée dans le tableau de bord (0.30 = 30 %)
+alter table spaces
+  add column if not exists class_acquisition_threshold float not null default 0.30
+    check (class_acquisition_threshold between 0 and 1);
+
 -- Templates de curriculum (strictement personnels)
 create table if not exists curriculum_templates (
   id uuid primary key default gen_random_uuid(),

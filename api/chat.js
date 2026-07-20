@@ -129,8 +129,13 @@ async function embedQuery(text) {
     },
     body: JSON.stringify({ model: 'voyage-3', input: [text] }),
   });
+  if (!response.ok) {
+    throw new Error(`Voyage ${response.status}`);
+  }
   const data = await response.json();
-  return data.data[0].embedding;
+  const embedding = data?.data?.[0]?.embedding;
+  if (!embedding) throw new Error('Embedding vide');
+  return embedding;
 }
 
 export default async function handler(req, res) {
@@ -222,7 +227,13 @@ export default async function handler(req, res) {
   }
 
   // Vectoriser la question
-  const queryEmbedding = await embedQuery(question);
+  let queryEmbedding;
+  try {
+    queryEmbedding = await embedQuery(question);
+  } catch (err) {
+    console.error('[chat] embedding failed:', err.message);
+    return res.status(503).json({ error: "Le service de recherche est momentanément indisponible. Réessaie dans quelques instants." });
+  }
 
   // Chercher les chunks similaires
   const { data: chunks } = await supabase.rpc('match_chunks', {
@@ -259,14 +270,26 @@ export default async function handler(req, res) {
       ]
     : [{ role: 'user', content: question }];
 
-  const message = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    system: systemPrompt,
-    messages: conversationMessages,
-  });
+  let message;
+  try {
+    message = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages: conversationMessages,
+    });
+  } catch (err) {
+    console.error('[chat] anthropic call failed:', err.message);
+    return res.status(503).json({ error: "L'assistant est momentanément indisponible. Réessaie dans quelques instants." });
+  }
 
-  let answer = message.content[0].text
+  const rawText = message?.content?.[0]?.text;
+  if (!rawText) {
+    console.error('[chat] empty model response');
+    return res.status(502).json({ error: "Réponse vide de l'assistant. Reformule ta question." });
+  }
+
+  let answer = rawText
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/#{1,6}\s/g, '')

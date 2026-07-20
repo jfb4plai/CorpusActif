@@ -51,6 +51,7 @@ export default function SpaceDetail() {
   const [threshold, setThreshold] = useState(0.5);
   const [pedagogicalMode, setPedagogicalMode] = useState('direct');
   const [relancesThreshold, setRelancesThreshold] = useState(5);
+  const [classThreshold, setClassThreshold] = useState(0.30);
   const [niveau, setNiveau] = useState('');
   const [matiere, setMatiere] = useState('');
   const [flashDeckId, setFlashDeckId] = useState(null);
@@ -67,6 +68,7 @@ export default function SpaceDetail() {
           setThreshold(data.similarity_threshold ?? 0.5);
           setPedagogicalMode(data.pedagogical_mode ?? 'direct');
           setRelancesThreshold(data.socratic_relances_threshold ?? 5);
+          setClassThreshold(data.class_acquisition_threshold ?? 0.30);
           setNiveau(data.niveau ?? '');
           setMatiere(data.matiere ?? '');
           setFlashDeckId(data.flashcard_deck_id ?? null);
@@ -115,6 +117,11 @@ export default function SpaceDetail() {
   function handleRelancesThreshold(value) {
     setRelancesThreshold(value);
     saveField('socratic_relances_threshold', value);
+  }
+
+  function handleClassThreshold(value) {
+    setClassThreshold(value);
+    saveField('class_acquisition_threshold', value);
   }
 
   function handleNiveau(e) {
@@ -269,6 +276,39 @@ export default function SpaceDetail() {
         {pedagogicalMode === 'socratique' && !hasCurriculum && (
           <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700" style={{borderLeft:'3px solid #f97316'}}>
             <strong>Bilans de session désactivés.</strong> Les rappels de progression, la carte de notions et le message personnalisé nécessitent un curriculum défini dans l'onglet Curriculum.
+          </div>
+        )}
+
+        {/* Seuil d'alerte classe (suivi d'acquisition) */}
+        {pedagogicalMode === 'socratique' && (
+          <div className="bg-white border rounded p-4 mt-4" style={{borderLeft:'3px solid var(--teal)'}}>
+            <p className="label-upper mb-2">Alerte de remédiation</p>
+            <p className="text-xs text-gray-400 mb-3">
+              Dans le tableau de bord, une notion est signalée « à réaborder » si le pourcentage d'apprenants l'ayant acquise passe sous ce seuil. Une notion acquise par personne est toujours signalée.
+            </p>
+            <div className="flex gap-2">
+              {[
+                { label: 'Exigeant', value: 0.60, title: 'Alerte tant que moins de 60 % de la classe a acquis la notion' },
+                { label: 'Standard', value: 0.30, title: 'Alerte tant que moins de 30 % de la classe a acquis la notion' },
+                { label: 'Souple', value: 0.10, title: "Alerte seulement si presque personne n'a acquis la notion" },
+              ].map(p => (
+                <button
+                  key={p.value}
+                  onClick={() => handleClassThreshold(p.value)}
+                  title={p.title}
+                  className={`px-3 py-1 rounded border text-xs font-medium transition ${
+                    Math.abs(classThreshold - p.value) < 0.001
+                      ? 'bg-[#0a9370] text-white border-[#0a9370]'
+                      : 'text-gray-600 border-gray-300 hover:border-teal-400'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              Seuil actuel : une notion acquise par moins de {Math.round(classThreshold * 100)} % de la classe est signalée.
+            </p>
           </div>
         )}
 

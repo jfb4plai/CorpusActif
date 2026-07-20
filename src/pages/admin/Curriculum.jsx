@@ -77,21 +77,23 @@ export default function Curriculum({ spaceId, session }) {
     if (!tpl) return;
     if (!window.confirm(`Remplacer le curriculum actuel par "${tpl.name}" (${tpl.nodes.length} concepts) ?`)) return;
 
-    // Supprimer les nœuds existants
-    for (const n of nodes) {
-      await supabase.from('curriculum_nodes').delete().eq('id', n.id);
+    // Supprimer les nœuds existants (une seule requête)
+    const ids = nodes.map(n => n.id);
+    if (ids.length > 0) {
+      await supabase.from('curriculum_nodes').delete().in('id', ids);
     }
-    // Insérer les nœuds du template
-    for (const n of tpl.nodes) {
-      await supabase.from('curriculum_nodes').insert({
-        space_id: spaceId,
-        concept: n.concept,
-        definition: n.definition,
-        level: n.level || null,
-      });
+    // Insérer les nœuds du template (un seul insert)
+    if (tpl.nodes.length > 0) {
+      await supabase.from('curriculum_nodes').insert(
+        tpl.nodes.map(n => ({
+          space_id: spaceId,
+          concept: n.concept,
+          definition: n.definition,
+          level: n.level || null,
+        }))
+      );
     }
     setShowImport(false);
-    setSelectedTemplate('');
     loadNodes();
   }
 
