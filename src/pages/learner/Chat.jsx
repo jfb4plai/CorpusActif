@@ -143,10 +143,13 @@ export default function Chat() {
     setInput('');
 
     // Historique des messages à envoyer (rôles user/assistant avec contenu brut)
-    const history = messages.map(m => ({
-      role: m.role,
-      content: m.rawContent || m.content,
-    }));
+    // On exclut les messages d'UI (valorisation) qui n'ont pas de contenu socratique
+    const history = messages
+      .filter(m => !m.isCelebration)
+      .map(m => ({
+        role: m.role,
+        content: m.rawContent || m.content,
+      }));
 
     setMessages(prev => [...prev, { role: 'user', content: question, rawContent: question }]);
     setLoading(true);
@@ -213,8 +216,18 @@ export default function Chat() {
         isNotionAcquired,
       }]);
 
-      // Passer à la notion suivante si acquise — attendre la connexion aux savoirs
+      // Passer à la notion suivante si acquise — valorisation puis connexion aux savoirs
       if (isNotionAcquired && notions.length > 0) {
+        // Recadrage positif réservé au cas "acquis après un indice" (le modèle
+        // valorise déjà la maîtrise directe) : dédramatiser le recours à l'aide.
+        if (hintsForCurrentNotion > 0) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: "Tu l'as trouvé toi-même après un coup de pouce — c'est exactement comme ça qu'on apprend.",
+            rawContent: '',
+            isCelebration: true,
+          }]);
+        }
         setConnectionPrompt({
           notionConcept: currentConcept,
           nextIndex: notionIndex + 1,
@@ -424,6 +437,14 @@ export default function Chat() {
         )}
         <span className="ml-auto text-xs opacity-70">{learnerCode}</span>
       </header>
+      {notions.length > 0 && (
+        <div className="h-1.5 bg-teal-100" role="progressbar" aria-label="Progression du parcours">
+          <div
+            className="h-full bg-[#0a9370] transition-all duration-700 ease-out"
+            style={{ width: `${Math.round((Object.keys(notionOutcomes).length / notions.length) * 100)}%` }}
+          />
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-2xl mx-auto w-full">
         {messages.length === 0 && (
           <div className={`mt-16 mx-auto max-w-sm bg-white rounded-2xl px-6 py-5 text-center border ${isSocratic ? 'border-orange-200' : 'border-gray-100'}`}>

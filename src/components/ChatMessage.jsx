@@ -22,7 +22,7 @@ export default function ChatMessage({
   isNotionOpener, isIntro, isOutro, flashDeckId,
   isRecap, previousNotions, lastSessionDate,
   isNotionMap, notions, notionOutcomes,
-  isDebrief,
+  isDebrief, isCelebration,
 }) {
   // feedbackSent est éphémère — si les messages sont chargés depuis la DB au montage,
   // dériver l'état initial depuis m.helpful !== null
@@ -88,16 +88,28 @@ export default function ChatMessage({
               </span>
             ))}
             {failed.map(n => (
-              <span key={n.concept} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 font-medium" style={{background:'#fff7ed', color:'#9a3412', borderRadius:'4px'}}>
-                ✗ {n.concept}
+              <span key={n.concept} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 font-medium" style={{background:'#f1f5f9', color:'#475569', borderRadius:'4px'}}>
+                ○ {n.concept}
               </span>
             ))}
           </div>
           <p className="text-xs" style={{color:'var(--text2)'}}>
             {mastered.length > 0 && `${mastered.length} maîtrisée${mastered.length > 1 ? 's' : ''}`}
             {withHint.length > 0 && ` · ${withHint.length} comprise${withHint.length > 1 ? 's' : ''} avec indice`}
-            {failed.length > 0 && ` · ${failed.length} à retravailler`}
+            {failed.length > 0 && ` · ${failed.length} à revoir ensemble`}
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Valorisation immédiate à la maîtrise d'une notion
+  if (isCelebration) {
+    return (
+      <div className="flex justify-center mb-4">
+        <div className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-full" style={{ background: '#dcfce7', color: '#166534' }}>
+          <span aria-hidden="true">✓</span>
+          <span className="font-medium">{content}</span>
         </div>
       </div>
     );
