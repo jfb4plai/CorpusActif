@@ -39,6 +39,8 @@ export default function Chat() {
   const [connectionPrompt, setConnectionPrompt] = useState(null);
   const [connectionInput, setConnectionInput] = useState('');
   const [connectionLoading, setConnectionLoading] = useState(false);
+  const [readinessPrompt, setReadinessPrompt] = useState(false);
+  const [pendingNotions, setPendingNotions] = useState(null);
   const bottomRef = useRef();
 
   useEffect(() => {
@@ -101,10 +103,8 @@ export default function Chat() {
             isIntro: true,
           });
           setMessages(msgs);
-          setTimeout(() => {
-            openNotion(data.notions, 0);
-            setSessionReady(true);
-          }, 600);
+          setPendingNotions(data.notions);
+          setTimeout(() => setReadinessPrompt(true), 600);
         } else {
           const reason = data.reason || 'unknown';
           const msg = reason === 'no_chunks'
@@ -343,6 +343,22 @@ export default function Chat() {
     }]);
   }
 
+  function handleReadiness(confirmed) {
+    setReadinessPrompt(false);
+    if (!confirmed) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: "Pas de souci — jette d'abord un œil aux ressources de ton enseignant, ou demande-lui. Tu peux aussi commencer directement si tu préfères t'y frotter maintenant.",
+        rawContent: '',
+        isIntro: true,
+      }]);
+    }
+    setTimeout(() => {
+      openNotion(pendingNotions, 0);
+      setSessionReady(true);
+    }, confirmed ? 400 : 1400);
+  }
+
   async function sendFeedback(messageId, helpful) {
     try {
       await fetch('/api/feedback', {
@@ -493,6 +509,31 @@ export default function Chat() {
               : null}
           />
         ))}
+        {readinessPrompt && (
+          <div className="flex justify-center mb-4">
+            <div className="max-w-[90%] bg-orange-50 border border-orange-200 rounded-2xl px-5 py-4 text-sm text-center">
+              <p className="text-orange-900 leading-relaxed mb-3">
+                Avant de commencer : as-tu déjà été confronté à cette matière (cours, lecture, exercice) ? Les questions qui suivent t'aident à consolider ce que tu as déjà croisé — elles ne remplacent pas une première découverte.
+              </p>
+              <div className="flex gap-2 justify-center">
+                <button
+                  type="button"
+                  onClick={() => handleReadiness(true)}
+                  className="bg-[#0a9370] text-white px-4 py-2 rounded-full text-xs font-semibold"
+                >
+                  Oui, j'ai déjà vu ça
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleReadiness(false)}
+                  className="border border-orange-300 text-orange-800 px-4 py-2 rounded-full text-xs font-medium"
+                >
+                  Pas encore
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {loading && (
           <div className="flex justify-start mb-4">
             <div className="bg-white border rounded-2xl px-4 py-3 text-sm text-gray-400">…</div>
