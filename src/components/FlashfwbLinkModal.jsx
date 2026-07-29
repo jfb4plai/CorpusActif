@@ -27,13 +27,13 @@ export default function FlashfwbLinkModal({ onLinked, onClose }) {
       }
 
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('/api/link-flashfwb', {
+      const res = await fetch('/api/generate-flashcards', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ flashfwb_access_token: accessToken }),
+        body: JSON.stringify({ action: 'link_flashfwb', flashfwb_access_token: accessToken }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || 'Échec de la liaison');
