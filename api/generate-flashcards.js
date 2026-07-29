@@ -8,6 +8,12 @@ const supabaseService = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// decks/cards vivent dans le projet Supabase FlashFWB (distinct du projet CorpusActif)
+const supabaseFlashfwb = createClient(
+  process.env.FLASHFWB_SUPABASE_URL,
+  process.env.FLASHFWB_SERVICE_ROLE_KEY
+);
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -35,6 +41,21 @@ export default async function handler(req, res) {
   // Récupérer user_id
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return res.status(401).json({ error: 'Session invalide' });
+
+  // Le deck doit appartenir à un vrai compte FlashFWB (projet Supabase distinct) —
+  // l'enseignant doit avoir lié son compte une fois au préalable (option 3).
+  const { data: link } = await supabaseService
+    .from('corpus_flashfwb_links')
+    .select('flashfwb_user_id')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!link) {
+    return res.status(428).json({
+      error: 'Compte FlashFWB non lié',
+      code: 'FLASHFWB_LINK_REQUIRED',
+    });
+  }
 
   // === SOURCE A : Curriculum ===
   const { data: curriculumNodes } = await supabaseService
@@ -133,10 +154,10 @@ Langue : français. JSON uniquement.`,
   let deckId = space.flashcard_deck_id;
 
   if (!deckId) {
-    const { data: deck, error: deckError } = await supabaseService
+    const { data: deck, error: deckError } = await supabaseFlashfwb
       .from('decks')
       .insert({
-        user_id: user.id,
+        user_id: link.flashfwb_user_id,
         name: space.name,
         lang_q: 'fr-BE',
         lang_a: 'fr-BE',

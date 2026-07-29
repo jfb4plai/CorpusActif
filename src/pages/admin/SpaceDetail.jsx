@@ -5,6 +5,7 @@ import Documents from './Documents';
 import Curriculum from './Curriculum';
 import LearnerCodes from './LearnerCodes';
 import Dashboard from './Dashboard';
+import FlashfwbLinkModal from '../../components/FlashfwbLinkModal';
 
 const TABS = ['Documents', 'Curriculum', 'Codes & QR', 'Tableau de bord'];
 
@@ -57,6 +58,7 @@ export default function SpaceDetail() {
   const [flashDeckId, setFlashDeckId] = useState(null);
   const [flashGenerating, setFlashGenerating] = useState(false);
   const [flashResult, setFlashResult] = useState(null);
+  const [showFlashfwbLink, setShowFlashfwbLink] = useState(false);
   const [hasCurriculum, setHasCurriculum] = useState(false);
 
   useEffect(() => {
@@ -152,7 +154,13 @@ export default function SpaceDetail() {
         body: JSON.stringify({ space_id: spaceId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (data.code === 'FLASHFWB_LINK_REQUIRED') {
+          setShowFlashfwbLink(true);
+          return;
+        }
+        throw new Error(data.error);
+      }
       setFlashDeckId(data.deck_id);
       setFlashResult({ cards_created: data.cards_created, cards_existing: data.cards_existing });
     } catch (err) {
@@ -394,6 +402,16 @@ export default function SpaceDetail() {
       {tab === 1 && <Curriculum spaceId={spaceId} session={session} />}
       {tab === 2 && <LearnerCodes spaceId={spaceId} session={session} />}
       {tab === 3 && <Dashboard spaceId={spaceId} />}
+
+      {showFlashfwbLink && (
+        <FlashfwbLinkModal
+          onClose={() => setShowFlashfwbLink(false)}
+          onLinked={() => {
+            setShowFlashfwbLink(false);
+            generateFlashDeck();
+          }}
+        />
+      )}
     </div>
   );
 }
