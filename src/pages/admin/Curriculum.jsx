@@ -102,17 +102,22 @@ export default function Curriculum({ spaceId, session }) {
       const parents = withIdx.filter(n => n.parentIndex == null);
       const enfants = withIdx.filter(n => n.parentIndex != null);
 
+      // Ids parents générés côté client → les enfants les référencent directement,
+      // sans dépendre de l'ordre de retour de Supabase.
       const idParIndex = {};
       if (parents.length > 0) {
-        const { data: pIns, error: pErr } = await supabase
-          .from('corpus_curriculum_nodes')
-          .insert(parents.map(n => ({ space_id: spaceId, concept: n.concept, definition: n.definition, level: n.level || null, parent_id: null })))
-          .select('id');
+        const rows = parents.map(n => {
+          const id = crypto.randomUUID();
+          idParIndex[n._i] = id;
+          return { id, space_id: spaceId, concept: n.concept, definition: n.definition, level: n.level || null, parent_id: null };
+        });
+        const { error: pErr } = await supabase.from('corpus_curriculum_nodes').insert(rows);
         if (pErr) { console.error(pErr); return; }
-        parents.forEach((n, i) => { idParIndex[n._i] = pIns[i].id; });
       }
 
       if (enfants.length > 0) {
+        // Insert groupé pour les enfants d'un template : l'ordre importe peu sur un
+        // modèle réimporté, et le flux est déjà un delete-puis-insert en masse.
         await supabase.from('corpus_curriculum_nodes').insert(
           enfants.map(n => ({
             space_id: spaceId,
@@ -136,11 +141,22 @@ export default function Curriculum({ spaceId, session }) {
 
   async function deleteNode(id) {
     const token = session.access_token;
-    await fetch(`/api/curriculum?space_id=${spaceId}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ id }),
-    });
+    setGenError('');
+    let res;
+    try {
+      res = await fetch(`/api/curriculum?space_id=${spaceId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id }),
+      });
+    } catch {
+      setGenError('La suppression a échoué (réseau).');
+      return;
+    }
+    if (!res.ok) {
+      setGenError('La suppression a échoué. Réessayez ou supprimez d’abord les concepts enfants.');
+      return;
+    }
     setNodes(prev => prev.filter(n => n.id !== id));
   }
 
@@ -198,27 +214,50 @@ export default function Curriculum({ spaceId, session }) {
       const { parents, enfants } = draftToNodes(draftEff, kept);
       if (parents.length === 0 && enfants.length === 0) { setApplying(false); return; }
 
+      // Ids générés côté client : pas de dépendance à l'ordre de retour de Supabase.
       const idParTempId = {};
-      if (parents.length > 0) {
-        const { data: pInserted, error: pErr } = await supabase
-          .from('corpus_curriculum_nodes')
-          .insert(parents.map(p => ({ space_id: spaceId, concept: p.concept, definition: p.definition, level: p.level, parent_id: null })))
-          .select('id, concept');
-        if (pErr) throw new Error(pErr.message);
-        parents.forEach((p, i) => { idParTempId[p.tempId] = pInserted[i].id; });
+      const insertedIds = [];
+      const insererNoeud = async (row) => {
+        const id = crypto.randomUUID();
+        const { error } = await supabase.from('corpus_curriculum_nodes').insert({ id, ...row });
+        if (error) throw new Error(error.message);
+        insertedIds.push(id);
+        return id;
+      };
+
+      // Regrouper les enfants par chapitre pour insérer parent puis ses enfants, en ordre.
+      const enfantsParParent = new Map();
+      const sansChapitre = [];
+      for (const e of enfants) {
+        if (e.parentTempId) {
+          if (!enfantsParParent.has(e.parentTempId)) enfantsParParent.set(e.parentTempId, []);
+          enfantsParParent.get(e.parentTempId).push(e);
+        } else {
+          sansChapitre.push(e);
+        }
       }
 
-      if (enfants.length > 0) {
-        const { error: cErr } = await supabase
-          .from('corpus_curriculum_nodes')
-          .insert(enfants.map(e => ({
-            space_id: spaceId,
-            concept: e.concept,
-            definition: e.definition,
-            level: null,
-            parent_id: e.parentTempId ? idParTempId[e.parentTempId] : null,
-          })));
-        if (cErr) throw new Error(cErr.message);
+      try {
+        // Inserts séquentiels : chaque nœud reçoit un created_at distinct → l'ordre
+        // chapitre/concept est préservé dans le parcours apprenant (~10-30 nœuds, action ponctuelle).
+        for (const p of parents) {
+          const pid = await insererNoeud({ space_id: spaceId, concept: p.concept, definition: p.definition, level: p.level, parent_id: null });
+          idParTempId[p.tempId] = pid;
+          for (const e of (enfantsParParent.get(p.tempId) || [])) {
+            await insererNoeud({ space_id: spaceId, concept: e.concept, definition: e.definition, level: null, parent_id: pid });
+          }
+        }
+        for (const e of sansChapitre) {
+          await insererNoeud({ space_id: spaceId, concept: e.concept, definition: e.definition, level: null, parent_id: null });
+        }
+      } catch (errInsert) {
+        // Nettoyage best-effort : ne pas laisser de nœuds à moitié insérés polluer le parcours.
+        try {
+          if (insertedIds.length > 0) {
+            await supabase.from('corpus_curriculum_nodes').delete().in('id', insertedIds);
+          }
+        } catch { /* ne pas masquer l'erreur d'origine */ }
+        throw errInsert;
       }
 
       setDraft(null);
@@ -520,7 +559,7 @@ export default function Curriculum({ spaceId, session }) {
                 <div className="flex justify-between items-center">
                   <p className="text-sm font-semibold text-gray-800">{g.parent.concept}</p>
                   <div className="flex gap-3 shrink-0">
-                    <button onClick={() => { setEditId(g.parent.id); setForm({ concept: g.parent.concept, definition: g.parent.definition, level: g.parent.level || '', parent_id: '' }); }}
+                    <button onClick={() => { setEditId(g.parent.id); setForm({ concept: g.parent.concept, definition: g.parent.definition, level: g.parent.level || '', parent_id: g.parent.parent_id || '' }); }}
                       className="text-xs text-blue-500 hover:text-blue-700">Modifier</button>
                     <button onClick={() => deleteNode(g.parent.id)} className="text-xs text-red-400 hover:text-red-600">Supprimer</button>
                   </div>

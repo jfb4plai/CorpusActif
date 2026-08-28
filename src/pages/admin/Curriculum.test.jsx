@@ -18,7 +18,7 @@ vi.mock('../../lib/supabase', () => ({
       }),
       insert: (rows) => {
         const arr = Array.isArray(rows) ? rows : [rows]
-        const inserted = arr.map((r, i) => ({ ...r, id: 'new-' + (nodesStore.rows.length + i) }))
+        const inserted = arr.map((r, i) => ({ ...r, id: r.id ?? 'new-' + (nodesStore.rows.length + i) }))
         nodesStore.rows.push(...inserted)
         return thenable({ data: inserted, error: null })
       },

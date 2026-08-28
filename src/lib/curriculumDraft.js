@@ -74,5 +74,11 @@ export function groupNodes(nodes) {
       orphelins.push(n)
     }
   }
+  // Filet : aucun nœud ne doit disparaître de l'affichage, quelle que soit la profondeur.
+  const rendus = new Set()
+  for (const g of groupes) { rendus.add(g.parent.id); for (const e of g.enfants) rendus.add(e.id) }
+  for (const n of orphelins) rendus.add(n.id)
+  for (const n of nodes) if (!rendus.has(n.id)) orphelins.push(n)
+
   return { groupes, orphelins }
 }

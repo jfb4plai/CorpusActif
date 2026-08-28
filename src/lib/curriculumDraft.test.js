@@ -91,6 +91,17 @@ describe('groupNodes', () => {
     expect(orphelins.map(n => n.id)).toEqual(['c1'])
   })
 
+  it('un nœud de profondeur 3 n\'est jamais masqué', () => {
+    const nodes = [
+      { id: 'a', concept: 'A', parent_id: null },
+      { id: 'b', concept: 'B', parent_id: 'a' },
+      { id: 'c', concept: 'C', parent_id: 'b' },
+    ]
+    const { groupes, orphelins } = groupNodes(nodes)
+    const rendus = [...groupes.flatMap(g => [g.parent.id, ...g.enfants.map(e => e.id)]), ...orphelins.map(n => n.id)]
+    expect(new Set(rendus)).toEqual(new Set(['a', 'b', 'c']))
+  })
+
   it('préserve l\'ordre d\'entrée des groupes et des orphelins', () => {
     const nodes = [
       { id: 'o1', concept: 'O1', parent_id: null },
