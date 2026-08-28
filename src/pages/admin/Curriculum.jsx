@@ -65,7 +65,12 @@ export default function Curriculum({ spaceId, session }) {
     if (!templateName.trim() || nodes.length === 0) return;
     setSavingTemplate(true);
     setTemplateMsg('');
-    const snap = nodes.map(({ concept, definition, level }) => ({ concept, definition, level: level || null }));
+    const snap = nodes.map((n) => ({
+      concept: n.concept,
+      definition: n.definition,
+      level: n.level || null,
+      parentIndex: n.parent_id ? nodes.findIndex(x => x.id === n.parent_id) : null,
+    }));
     const { error } = await supabase
       .from('corpus_curriculum_templates')
       .insert({ user_id: session.user.id, name: templateName.trim(), nodes: snap });
@@ -90,16 +95,34 @@ export default function Curriculum({ spaceId, session }) {
     if (ids.length > 0) {
       await supabase.from('corpus_curriculum_nodes').delete().in('id', ids);
     }
-    // Insérer les nœuds du template (un seul insert)
+    // Insérer en 2 passes : racines d'abord (pour récupérer leurs ids), puis enfants.
+    // Un template pré-hiérarchie n'a pas de parentIndex → tous traités comme racines.
     if (tpl.nodes.length > 0) {
-      await supabase.from('corpus_curriculum_nodes').insert(
-        tpl.nodes.map(n => ({
-          space_id: spaceId,
-          concept: n.concept,
-          definition: n.definition,
-          level: n.level || null,
-        }))
-      );
+      const withIdx = tpl.nodes.map((n, i) => ({ ...n, _i: i }));
+      const parents = withIdx.filter(n => n.parentIndex == null);
+      const enfants = withIdx.filter(n => n.parentIndex != null);
+
+      const idParIndex = {};
+      if (parents.length > 0) {
+        const { data: pIns, error: pErr } = await supabase
+          .from('corpus_curriculum_nodes')
+          .insert(parents.map(n => ({ space_id: spaceId, concept: n.concept, definition: n.definition, level: n.level || null, parent_id: null })))
+          .select('id');
+        if (pErr) { console.error(pErr); return; }
+        parents.forEach((n, i) => { idParIndex[n._i] = pIns[i].id; });
+      }
+
+      if (enfants.length > 0) {
+        await supabase.from('corpus_curriculum_nodes').insert(
+          enfants.map(n => ({
+            space_id: spaceId,
+            concept: n.concept,
+            definition: n.definition,
+            level: n.level || null,
+            parent_id: idParIndex[n.parentIndex] ?? null,
+          }))
+        );
+      }
     }
     setShowImport(false);
     loadNodes();
@@ -263,8 +286,9 @@ export default function Curriculum({ spaceId, session }) {
       {showSaveModal && (
         <form onSubmit={saveAsTemplate} className="bg-teal-50 border border-teal-200 rounded p-4 flex gap-2 items-end">
           <div className="flex-1">
-            <label className="text-xs text-gray-600 block mb-1">Nom du modèle</label>
+            <label htmlFor="template-name" className="text-xs text-gray-600 block mb-1">Nom du modèle</label>
             <input
+              id="template-name"
               value={templateName}
               onChange={e => setTemplateName(e.target.value)}
               placeholder="Ex : Photosynthèse — 4e secondaire"
