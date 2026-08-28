@@ -49,36 +49,45 @@ async function genererCurriculum(req, res) {
 
   const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 
+  // Client user (ANON) : vérifie la propriété de l'espace via RLS.
   const userClient = createClient(SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return res.status(401).json({ error: 'Session invalide' });
 
-  const { data: space } = await userClient
+  const { data: space, error: spaceErr } = await userClient
     .from('corpus_spaces')
     .select('id, name, matiere, niveau')
     .eq('id', space_id)
     .single();
+  if (spaceErr && spaceErr.code !== 'PGRST116') {
+    console.error('[curriculum.generate] lecture espace:', spaceErr.message);
+    return res.status(500).json({ error: 'La génération du curriculum a échoué. Réessayez.' });
+  }
   if (!space) return res.status(403).json({ error: 'Espace introuvable ou accès refusé' });
 
+  // Client service : lecture des chunks (l'appartenance a été vérifiée ci-dessus).
   const service = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-  const { data: chunks } = await service
+  const { data: chunks, error: chunksErr } = await service
     .from('corpus_chunks')
     .select('content')
     .eq('space_id', space_id)
     .order('created_at');
-
+  if (chunksErr) {
+    console.error('[curriculum.generate] lecture chunks:', chunksErr.message);
+    return res.status(500).json({ error: 'La génération du curriculum a échoué. Réessayez.' });
+  }
   if (!chunks || chunks.length === 0) {
     return res.status(400).json({ error: 'Aucun document indexé — ajoutez des documents avant de générer le curriculum.' });
   }
 
   const MAX_CHUNKS = 120;
-  const pas = chunks.length > MAX_CHUNKS ? Math.ceil(chunks.length / MAX_CHUNKS) : 1;
-  const extraits = chunks
-    .filter((_, i) => i % pas === 0)
-    .map(c => (c.content || '').slice(0, 500))
-    .join('\n---\n');
+  const n = chunks.length;
+  const echantillon = n <= MAX_CHUNKS
+    ? chunks
+    : Array.from({ length: MAX_CHUNKS }, (_, k) => chunks[Math.round(k * (n - 1) / (MAX_CHUNKS - 1))]);
+  const extraits = echantillon.map(c => (c.content || '').slice(0, 500)).join('\n---\n');
 
   const contexte = [
     space.matiere && `Matière : ${space.matiere}`,
@@ -104,10 +113,8 @@ ${extraits}`;
       max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     };
-    // output_config NON UTILISÉ : test `output_config: { format: { type: 'json_schema' } }`
-    // impossible ici (pas de ANTHROPIC_API_KEY dans l'env de dev/CI au moment de l'implémentation).
-    // On reste donc sur le parsing tolérant (déballage des fences ```json + JSON.parse),
-    // pattern déjà utilisé dans chat-init.js / generate-flashcards.js.
+    // Sortie contrainte par CURRICULUM_SCHEMA (output_config) — supporté par @anthropic-ai/sdk 0.100.1. Parsing tolérant conservé en filet.
+    params.output_config = { format: { type: 'json_schema', schema: CURRICULUM_SCHEMA } };
     const response = await anthropic.messages.create(params);
     const raw = (response.content?.[0]?.text ?? '').trim()
       .replace(/^```json\s*/i, '')

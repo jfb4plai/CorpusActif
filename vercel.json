@@ -6,6 +6,7 @@
     "api/chat-init.js": { "maxDuration": 30 },
     "api/chat-debrief.js": { "maxDuration": 15 },
     "api/generate-flashcards.js": { "maxDuration": 30 },
+    "api/curriculum.js": { "maxDuration": 30 },
     "api/handoff.js": { "maxDuration": 15 }
   },
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
