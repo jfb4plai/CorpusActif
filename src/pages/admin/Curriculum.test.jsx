@@ -90,3 +90,19 @@ describe('Curriculum — génération', () => {
     expect(nodesStore.rows).toHaveLength(0)
   })
 })
+
+describe('Curriculum — affichage groupé', () => {
+  it('rend les chapitres avec leurs enfants indentés et les orphelins à part', async () => {
+    nodesStore.rows = [
+      { id: 'p1', concept: 'Chapitre 1', definition: '', level: null, parent_id: null },
+      { id: 'c1', concept: 'Concept 1', definition: 'd1', level: null, parent_id: 'p1' },
+      { id: 'c2', concept: 'Concept 2', definition: 'd2', level: null, parent_id: 'p1' },
+      { id: 'o1', concept: 'Notion isolée', definition: 'd3', level: null, parent_id: null },
+    ]
+    render(<Curriculum spaceId="s1" session={session} />)
+    expect(await screen.findByText('Chapitre 1')).toBeInTheDocument()
+    expect(screen.getByText('Concept 1')).toBeInTheDocument()
+    expect(screen.getByText('Notion isolée')).toBeInTheDocument()
+    expect(screen.getByTestId('chapitre-p1')).toBeInTheDocument()
+  })
+})

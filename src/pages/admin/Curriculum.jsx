@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { draftToNodes } from '../../lib/curriculumDraft';
+import { draftToNodes, groupNodes } from '../../lib/curriculumDraft';
 
 const LEVELS = ['Primaire', 'Secondaire inférieur', 'Secondaire supérieur', 'Général'];
 
@@ -207,6 +207,23 @@ export default function Curriculum({ spaceId, session }) {
     } finally {
       setApplying(false);
     }
+  }
+
+  function NodeRow({ n }) {
+    return (
+      <div className="bg-white border rounded px-4 py-3 flex justify-between items-start">
+        <div>
+          <p className="text-sm font-medium text-gray-800">{n.concept}</p>
+          <p className="text-xs text-gray-500 mt-1">{n.definition}</p>
+          {n.level && <span className="text-xs text-[#0a9370] bg-[#0a9370]/10 px-2 py-0.5 rounded-full mt-1 inline-block">{n.level}</span>}
+        </div>
+        <div className="flex gap-3 ml-4 shrink-0">
+          <button onClick={() => { setEditId(n.id); setForm({ concept: n.concept, definition: n.definition, level: n.level || '', parent_id: n.parent_id || '' }); }}
+            className="text-xs text-blue-500 hover:text-blue-700">Modifier</button>
+          <button onClick={() => deleteNode(n.id)} className="text-xs text-red-400 hover:text-red-600">Supprimer</button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -455,7 +472,7 @@ export default function Curriculum({ spaceId, session }) {
             className="border rounded px-3 py-2 text-sm flex-1"
           >
             <option value="">Concept parent (optionnel)</option>
-            {nodes.map(n => <option key={n.id} value={n.id}>{n.concept}</option>)}
+            {nodes.map(n => <option key={n.id} value={n.id}>↳ {n.concept}</option>)}
           </select>
         </div>
         <div className="flex gap-2">
@@ -470,22 +487,29 @@ export default function Curriculum({ spaceId, session }) {
           )}
         </div>
       </form>
-      <div className="space-y-2">
-        {nodes.map(n => (
-          <div key={n.id} className="bg-white border rounded px-4 py-3 flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-gray-800">{n.concept}</p>
-              <p className="text-xs text-gray-500 mt-1">{n.definition}</p>
-              {n.level && <span className="text-xs text-[#0a9370] bg-[#0a9370]/10 px-2 py-0.5 rounded-full mt-1 inline-block">{n.level}</span>}
-            </div>
-            <div className="flex gap-3 ml-4 shrink-0">
-              <button onClick={() => { setEditId(n.id); setForm({ concept: n.concept, definition: n.definition, level: n.level || '', parent_id: n.parent_id || '' }); }}
-                className="text-xs text-blue-500 hover:text-blue-700">Modifier</button>
-              <button onClick={() => deleteNode(n.id)} className="text-xs text-red-400 hover:text-red-600">Supprimer</button>
-            </div>
+      {(() => {
+        const { groupes, orphelins } = groupNodes(nodes);
+        return (
+          <div className="space-y-4">
+            {groupes.map(g => (
+              <div key={g.parent.id} data-testid={`chapitre-${g.parent.id}`} className="border-l-2 border-[#0a9370] pl-3 space-y-2">
+                <div className="flex justify-between items-center">
+                  <p className="text-sm font-semibold text-gray-800">{g.parent.concept}</p>
+                  <div className="flex gap-3 shrink-0">
+                    <button onClick={() => { setEditId(g.parent.id); setForm({ concept: g.parent.concept, definition: g.parent.definition, level: g.parent.level || '', parent_id: '' }); }}
+                      className="text-xs text-blue-500 hover:text-blue-700">Modifier</button>
+                    <button onClick={() => deleteNode(g.parent.id)} className="text-xs text-red-400 hover:text-red-600">Supprimer</button>
+                  </div>
+                </div>
+                <div className="space-y-2 ml-2">
+                  {g.enfants.map(c => <NodeRow key={c.id} n={c} />)}
+                </div>
+              </div>
+            ))}
+            {orphelins.map(n => <NodeRow key={n.id} n={n} />)}
           </div>
-        ))}
-      </div>
+        );
+      })()}
     </div>
   );
 }
