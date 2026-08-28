@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { draftToNodes } from '../../lib/curriculumDraft';
 
 const LEVELS = ['Primaire', 'Secondaire inférieur', 'Secondaire supérieur', 'Général'];
 
@@ -13,6 +14,13 @@ export default function Curriculum({ spaceId, session }) {
   const [templateMsg, setTemplateMsg] = useState('');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showImport, setShowImport] = useState(false);
+
+  const [draft, setDraft] = useState(null);        // { chapitres, concepts_sans_chapitre }
+  const [kept, setKept] = useState({});            // { key: { keep, parentKey, concept?, definition? } }
+  const [chapTitres, setChapTitres] = useState({});// { [chapIdx]: titre édité }
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState('');
+  const [applying, setApplying] = useState(false);
 
   async function loadNodes() {
     const { data } = await supabase
@@ -113,6 +121,94 @@ export default function Curriculum({ spaceId, session }) {
     setNodes(prev => prev.filter(n => n.id !== id));
   }
 
+  function initKept(resultat) {
+    const k = {};
+    (resultat.chapitres || []).forEach((ch, ci) => {
+      (ch.concepts || []).forEach((c, coi) => {
+        k[`${ci}:${coi}`] = { keep: true, parentKey: `chap:${ci}`, concept: c.concept, definition: c.definition || '' };
+      });
+    });
+    (resultat.concepts_sans_chapitre || []).forEach((c, i) => {
+      k[`orphan:${i}`] = { keep: true, parentKey: null, concept: c.concept, definition: c.definition || '' };
+    });
+    return k;
+  }
+
+  async function generer() {
+    setGenError('');
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/curriculum?space_id=${spaceId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ action: 'generate', space_id: spaceId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'La génération a échoué.');
+      setDraft(data.resultat);
+      setKept(initKept(data.resultat));
+      setChapTitres({});
+    } catch (e) {
+      setGenError(e.message);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  function updateKept(key, patch) {
+    setKept(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+  }
+
+  function chapTitre(ci) {
+    return chapTitres[ci] ?? draft?.chapitres?.[ci]?.titre ?? `Chapitre ${ci + 1}`;
+  }
+
+  async function appliquerBrouillon() {
+    if (!draft) return;
+    setApplying(true);
+    setGenError('');
+    try {
+      const draftEff = {
+        chapitres: (draft.chapitres || []).map((ch, ci) => ({ ...ch, titre: chapTitre(ci) })),
+        concepts_sans_chapitre: draft.concepts_sans_chapitre || [],
+      };
+      const { parents, enfants } = draftToNodes(draftEff, kept);
+      if (parents.length === 0 && enfants.length === 0) { setApplying(false); return; }
+
+      const idParTempId = {};
+      if (parents.length > 0) {
+        const { data: pInserted, error: pErr } = await supabase
+          .from('corpus_curriculum_nodes')
+          .insert(parents.map(p => ({ space_id: spaceId, concept: p.concept, definition: p.definition, level: p.level, parent_id: null })))
+          .select('id, concept');
+        if (pErr) throw new Error(pErr.message);
+        parents.forEach((p, i) => { idParTempId[p.tempId] = pInserted[i].id; });
+      }
+
+      if (enfants.length > 0) {
+        const { error: cErr } = await supabase
+          .from('corpus_curriculum_nodes')
+          .insert(enfants.map(e => ({
+            space_id: spaceId,
+            concept: e.concept,
+            definition: e.definition,
+            level: null,
+            parent_id: e.parentTempId ? idParTempId[e.parentTempId] : null,
+          })));
+        if (cErr) throw new Error(cErr.message);
+      }
+
+      setDraft(null);
+      setKept({});
+      setChapTitres({});
+      loadNodes();
+    } catch (e) {
+      setGenError(e.message);
+    } finally {
+      setApplying(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
 
@@ -135,6 +231,15 @@ export default function Curriculum({ spaceId, session }) {
           Importer un modèle {templates.length > 0 && `(${templates.length})`}
         </button>
         {templateMsg && <p className="text-xs text-teal-700">{templateMsg}</p>}
+        <button
+          type="button"
+          onClick={generer}
+          disabled={generating}
+          className="text-xs border border-[#0a9370] text-[#0a9370] px-3 py-1.5 rounded hover:bg-teal-50 disabled:opacity-40"
+        >
+          {generating ? 'Génération en cours…' : 'Générer depuis les documents'}
+        </button>
+        {genError && <p className="text-xs text-red-500">{genError}</p>}
       </div>
 
       {/* Modal sauvegarde */}
@@ -191,6 +296,129 @@ export default function Curriculum({ spaceId, session }) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {draft && (
+        <div className="bg-teal-50 border border-teal-200 rounded p-4 space-y-4">
+          <p className="text-xs text-teal-800">
+            <strong>Brouillon généré</strong> — cochez et ajustez ce que vous gardez, puis
+            ajoutez au curriculum. Rien n'est enregistré tant que vous n'avez pas cliqué sur
+            « Ajouter au curriculum ». Votre curriculum actuel n'est pas modifié.
+          </p>
+
+          {(draft.chapitres || []).map((ch, ci) => (
+            <div key={ci} className="bg-white border rounded p-3 space-y-2">
+              <input
+                value={chapTitre(ci)}
+                onChange={e => setChapTitres(prev => ({ ...prev, [ci]: e.target.value }))}
+                aria-label={`Titre du chapitre ${ci + 1}`}
+                className="w-full border-b border-gray-200 pb-1 text-sm font-semibold text-gray-800 focus:outline-none"
+              />
+              {(ch.concepts || []).map((c, coi) => {
+                const key = `${ci}:${coi}`;
+                const k = kept[key] || {};
+                return (
+                  <div key={coi} className="flex gap-2 items-start pl-1">
+                    <input
+                      type="checkbox"
+                      checked={!!k.keep}
+                      onChange={e => updateKept(key, { keep: e.target.checked })}
+                      aria-label={`Garder ${c.concept}`}
+                      className="mt-2 accent-[#0a9370]"
+                    />
+                    <div className="flex-1 space-y-1">
+                      <input
+                        value={k.concept ?? c.concept}
+                        onChange={e => updateKept(key, { concept: e.target.value })}
+                        aria-label={`Concept ${c.concept}`}
+                        className="w-full border rounded px-2 py-1 text-sm"
+                      />
+                      <textarea
+                        value={k.definition ?? c.definition ?? ''}
+                        onChange={e => updateKept(key, { definition: e.target.value })}
+                        aria-label={`Définition de ${c.concept}`}
+                        rows={2}
+                        className="w-full border rounded px-2 py-1 text-xs"
+                      />
+                    </div>
+                    <select
+                      value={k.parentKey ?? ''}
+                      onChange={e => updateKept(key, { parentKey: e.target.value || null })}
+                      aria-label={`Chapitre de ${c.concept}`}
+                      className="border rounded px-1 py-1 text-xs shrink-0 max-w-[8rem]"
+                    >
+                      <option value="">Sans chapitre</option>
+                      {(draft.chapitres || []).map((_, i) => (
+                        <option key={i} value={`chap:${i}`}>↳ {chapTitre(i)}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+
+          {(draft.concepts_sans_chapitre || []).length > 0 && (
+            <div className="bg-white border rounded p-3 space-y-2">
+              <p className="text-sm font-semibold text-gray-800 border-b border-gray-200 pb-1">Concepts sans chapitre</p>
+              {draft.concepts_sans_chapitre.map((c, i) => {
+                const key = `orphan:${i}`;
+                const k = kept[key] || {};
+                return (
+                  <div key={i} className="flex gap-2 items-start pl-1">
+                    <input
+                      type="checkbox"
+                      checked={!!k.keep}
+                      onChange={e => updateKept(key, { keep: e.target.checked })}
+                      aria-label={`Garder ${c.concept}`}
+                      className="mt-2 accent-[#0a9370]"
+                    />
+                    <div className="flex-1 space-y-1">
+                      <input
+                        value={k.concept ?? c.concept}
+                        onChange={e => updateKept(key, { concept: e.target.value })}
+                        aria-label={`Concept ${c.concept}`}
+                        className="w-full border rounded px-2 py-1 text-sm"
+                      />
+                      <textarea
+                        value={k.definition ?? c.definition ?? ''}
+                        onChange={e => updateKept(key, { definition: e.target.value })}
+                        aria-label={`Définition de ${c.concept}`}
+                        rows={2}
+                        className="w-full border rounded px-2 py-1 text-xs"
+                      />
+                    </div>
+                    <select
+                      value={k.parentKey ?? ''}
+                      onChange={e => updateKept(key, { parentKey: e.target.value || null })}
+                      aria-label={`Chapitre de ${c.concept}`}
+                      className="border rounded px-1 py-1 text-xs shrink-0 max-w-[8rem]"
+                    >
+                      <option value="">Sans chapitre</option>
+                      {(draft.chapitres || []).map((_, ci) => (
+                        <option key={ci} value={`chap:${ci}`}>↳ {chapTitre(ci)}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={appliquerBrouillon}
+              disabled={applying || !Object.values(kept).some(k => k.keep)}
+              className="bg-[#0a9370] text-white px-4 py-2 rounded text-sm font-medium disabled:opacity-50"
+            >
+              {applying ? '…' : 'Ajouter au curriculum'}
+            </button>
+            <button type="button" onClick={() => { setDraft(null); setKept({}); setChapTitres({}); }} className="border px-4 py-2 rounded text-sm">
+              Annuler
+            </button>
           </div>
         </div>
       )}
