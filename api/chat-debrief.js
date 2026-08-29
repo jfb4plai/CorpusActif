@@ -19,8 +19,8 @@ const QUIZ_SCHEMA = {
         properties: {
           notion_concept: { type: 'string' },
           enonce: { type: 'string' },
-          options: { type: 'array', items: { type: 'string' } },
-          correct_index: { type: 'integer' },
+          options: { type: 'array', items: { type: 'string' }, minItems: 4, maxItems: 4 },
+          correct_index: { type: 'integer', minimum: 0, maximum: 3 },
           explication: { type: 'string' },
         },
       },
@@ -47,7 +47,8 @@ async function verifierSession(req, res) {
     const { data: session } = await serviceClient()
       .from('corpus_sessions').select('id').eq('token', token).single();
     if (!session) { res.status(401).json({ error: 'Session expirée ou révoquée' }); return null; }
-  } catch {
+  } catch (err) {
+    console.error('[chat-debrief] verifierSession:', err.message);
     res.status(401).json({ error: 'Token invalide ou expiré' });
     return null;
   }
@@ -110,7 +111,13 @@ async function genererDebrief(req, res) {
 // ---- Génération du QCM ---------------------------------------------------
 // space_id non requis : les notions à quizzer viennent du client (session de l'apprenant).
 async function genererQuiz(req, res) {
-  const notions = Array.isArray(req.body?.notions) ? req.body.notions : [];
+  const notions = (Array.isArray(req.body?.notions) ? req.body.notions : [])
+    .slice(0, 40)
+    .map(n => ({
+      concept: typeof n.concept === 'string' ? n.concept.slice(0, 200) : '',
+      definition: typeof n.definition === 'string' ? n.definition.slice(0, 300) : '',
+      outcome: n.outcome,
+    }));
   const plan = planifierQuestions(notions, 10);
   if (plan.length === 0) return res.status(200).json({ questions: [] });
 
@@ -134,26 +141,34 @@ Réponds en JSON strict : {"questions":[{"notion_concept":"...","enonce":"...","
   try {
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2500,
+      max_tokens: 4000,
       output_config: { format: { type: 'json_schema', schema: QUIZ_SCHEMA } },
       messages: [{ role: 'user', content: prompt }],
     });
+    if (response.stop_reason === 'max_tokens') {
+      console.error('[chat-debrief] quiz-gen tronqué à max_tokens');
+    }
     const raw = (response.content?.[0]?.text ?? '').trim()
       .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '');
     const parsed = JSON.parse(raw);
     const questions = (Array.isArray(parsed.questions) ? parsed.questions : [])
       .filter(q =>
-        q && typeof q.enonce === 'string' &&
-        Array.isArray(q.options) && q.options.length === 4 && q.options.every(o => typeof o === 'string' && o.trim()) &&
-        Number.isInteger(q.correct_index) && q.correct_index >= 0 && q.correct_index <= 3
+        q &&
+        typeof q.enonce === 'string' && q.enonce.trim() &&
+        Array.isArray(q.options) && q.options.length === 4 &&
+        q.options.every(o => typeof o === 'string' && o.trim()) &&
+        new Set(q.options.map(o => o.trim())).size === 4 &&
+        Number.isInteger(q.correct_index) && q.correct_index >= 0 && q.correct_index <= 3 &&
+        typeof q.notion_concept === 'string' && q.notion_concept.trim()
       )
       .map(q => ({
-        notion_concept: q.notion_concept || '',
+        notion_concept: q.notion_concept,
         enonce: q.enonce,
         options: q.options,
         correct_index: q.correct_index,
-        explication: q.explication || '',
-      }));
+        explication: typeof q.explication === 'string' ? q.explication : '',
+      }))
+      .slice(0, plan.length);
     return res.status(200).json({ questions });
   } catch (err) {
     console.error('[chat-debrief] quiz-gen error:', err.message);
@@ -164,12 +179,11 @@ Réponds en JSON strict : {"questions":[{"notion_concept":"...","enonce":"...","
 // ---- Enregistrement des résultats -------------------------------------
 async function enregistrerQuiz(req, res, { space_id }) {
   const { learner_code = null, resultats = [] } = req.body || {};
-  if (!Array.isArray(resultats) || resultats.length === 0) {
-    return res.status(200).json({ ok: true });
-  }
-  const rows = resultats
-    .filter(r => r && typeof r.notion_concept === 'string')
+  const rows = (Array.isArray(resultats) ? resultats : [])
+    .slice(0, 50)
+    .filter(r => r && typeof r.notion_concept === 'string' && r.notion_concept.length > 0 && r.notion_concept.length <= 200)
     .map(r => ({ space_id, learner_code, notion_concept: r.notion_concept, correct: !!r.correct }));
+  if (rows.length === 0) return res.status(200).json({ ok: true });
 
   const { error } = await serviceClient().from('corpus_quiz_attempts').insert(rows);
   if (error) {
