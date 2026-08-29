@@ -23,6 +23,9 @@ export default function ChatMessage({
   isRecap, previousNotions, lastSessionDate,
   isNotionMap, notions, notionOutcomes,
   isDebrief, isCelebration, isReadinessRecap,
+  isQuizOffer, onQuizAccept, onQuizDecline,
+  isQuizDeclined,
+  isQuizResult, quizScore, quizTotal, quizToReview,
 }) {
   // feedbackSent est éphémère — si les messages sont chargés depuis la DB au montage,
   // dériver l'état initial depuis m.helpful !== null
@@ -122,6 +125,64 @@ export default function ChatMessage({
         <div className="inline-flex items-center gap-2 text-xs px-4 py-2 rounded-full" style={{ background: '#f1f5f9', color: '#475569' }}>
           <span aria-hidden="true">📖</span>
           <span>{content}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Proposition du défi de consolidation
+  if (isQuizOffer) {
+    return (
+      <div className="flex justify-center mb-6">
+        <div className="w-full max-w-md bg-white px-5 py-4 text-sm" style={{border:'1px solid var(--border)', borderLeft:'3px solid var(--teal)', borderRadius:'4px'}}>
+          <p className="leading-relaxed mb-3" style={{color:'var(--text)'}}>
+            Te tester sur ce que tu viens de voir renforce ta mémoire. Veux-tu essayer ?
+          </p>
+          <div className="flex gap-2">
+            <button type="button" onClick={onQuizAccept}
+              className="bg-[#0a9370] text-white px-4 py-2 rounded-full text-xs font-semibold">
+              Oui
+            </button>
+            <button type="button" onClick={onQuizDecline}
+              className="border border-gray-300 text-gray-600 px-4 py-2 rounded-full text-xs font-medium">
+              Non merci
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Refus du défi
+  if (isQuizDeclined) {
+    return (
+      <div className="flex justify-center mb-4">
+        <div className="inline-flex items-center gap-2 text-xs px-4 py-2 rounded-full" style={{ background: '#f1f5f9', color: '#475569' }}>
+          <span>{content}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Bilan du défi de consolidation — factuel, pas de score triomphal
+  if (isQuizResult) {
+    return (
+      <div className="flex justify-center mb-6">
+        <div className="w-full max-w-md px-5 py-4 text-sm" style={{background:'#f0fdf4', border:'1px solid #bbf7d0', borderLeft:'3px solid var(--teal)', borderRadius:'4px'}}>
+          <p style={{color:'var(--text)'}}>
+            Tu as répondu juste à {quizScore} question{quizScore > 1 ? 's' : ''} sur {quizTotal}.
+          </p>
+          {quizToReview && quizToReview.length > 0 && (
+            <p className="text-xs mt-2" style={{color:'var(--text2)'}}>
+              À revoir : {quizToReview.join(', ')}.
+            </p>
+          )}
+          {flashDeckId && (
+            <a href="https://flashfwb-cd2m.vercel.app" target="_blank" rel="noopener noreferrer"
+              className="inline-block mt-3 text-xs text-[#0a9370] hover:underline">
+              Réviser dans FlashFWB →
+            </a>
+          )}
         </div>
       </div>
     );
