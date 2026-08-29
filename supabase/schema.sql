@@ -208,3 +208,19 @@ create table corpus_curriculum_templates (
 alter table corpus_curriculum_templates enable row level security;
 create policy "corpus_curriculum_templates_owner" on corpus_curriculum_templates
   for all using (auth.uid() = user_id);
+
+-- Défi de consolidation — chaque réponse au QCM post-parcours (signal distinct
+-- de l'acquisition socratique)
+create table corpus_quiz_attempts (
+  id uuid primary key default gen_random_uuid(),
+  space_id uuid references corpus_spaces on delete cascade not null,
+  learner_code text,
+  notion_concept text not null,
+  correct boolean not null,
+  created_at timestamptz default now()
+);
+alter table corpus_quiz_attempts enable row level security;
+create policy "corpus_quiz_attempts_owner" on corpus_quiz_attempts
+  for select using (space_id in (select id from corpus_spaces where user_id = auth.uid()));
+create policy "corpus_quiz_attempts_service" on corpus_quiz_attempts
+  for insert with check (true);
