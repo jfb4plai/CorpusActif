@@ -1,6 +1,8 @@
 -- Supprimer un nœud parent (chapitre) laisse ses enfants orphelins plutôt que d'échouer.
--- À EXÉCUTER MANUELLEMENT sur le projet Supabase partagé « Flashfwb »
--- (otiorljbujqzruulmqrs) AVANT tout déploiement de cette branche.
+-- À EXÉCUTER MANUELLEMENT dans Supabase → SQL Editor, projet CorpusActif
+-- (dfoaumjleqtxjeaplnna — celui pointé par SUPABASE_URL / VITE_SUPABASE_URL,
+-- où vivent les tables corpus_*), AVANT tout déploiement de cette branche.
+-- Ce n'est PAS le projet FlashFWB (otiorljbujqzruulmqrs, decks/cards uniquement).
 -- Sans cette migration, api/curriculum.js DELETE renvoie 500 (violation FK)
 -- dès qu'on supprime un chapitre ayant des concepts enfants.
 
