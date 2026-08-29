@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import ChatMessage from '../../components/ChatMessage';
+import QuizPanel from '../../components/QuizPanel';
 
 // Retire les marqueurs [INDICE] et [RÉPONSE] du texte affiché
 function stripMarker(content) {
@@ -41,6 +42,8 @@ export default function Chat() {
   const [connectionLoading, setConnectionLoading] = useState(false);
   const [readinessPrompt, setReadinessPrompt] = useState(false);
   const [pendingNotions, setPendingNotions] = useState(null);
+  const [quizQuestions, setQuizQuestions] = useState(null); // null = pas de quiz en cours
+  const [quizLoading, setQuizLoading] = useState(false);
   const bottomRef = useRef();
 
   useEffect(() => {
@@ -313,6 +316,15 @@ export default function Chat() {
           }]);
         } finally {
           setDebriefLoading(false);
+          // Proposer le défi de consolidation (opt-in) si l'espace a un curriculum
+          // et qu'au moins une notion a un résultat.
+          if (hasCurriculum && Object.keys(currentOutcomes).length > 0) {
+            setMessages(prev => [...prev, {
+              role: 'assistant', content: '', rawContent: '',
+              isQuizOffer: true,
+              quizOutcomes: currentOutcomes,
+            }]);
+          }
         }
       }, 400);
       return;
@@ -379,6 +391,62 @@ export default function Chat() {
     } catch {
       // feedback silencieux — ne bloque pas le chat
     }
+  }
+
+  async function lancerQuiz(outcomes) {
+    setQuizLoading(true);
+    try {
+      const payloadNotions = notions.map(n => ({
+        concept: n.concept,
+        definition: n.definition || '',
+        outcome: outcomes[n.concept] ?? 'mastered',
+      }));
+      const res = await fetch('/api/chat-debrief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, action: 'quiz-gen', notions: payloadNotions }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !Array.isArray(data.questions) || data.questions.length === 0) {
+        setMessages(prev => [...prev, {
+          role: 'assistant', content: "Le test n'a pas pu être préparé cette fois.", rawContent: '', isQuizDeclined: true,
+        }]);
+        return;
+      }
+      setQuizQuestions(data.questions);
+    } catch {
+      setMessages(prev => [...prev, {
+        role: 'assistant', content: "Le test n'a pas pu être préparé cette fois.", rawContent: '', isQuizDeclined: true,
+      }]);
+    } finally {
+      setQuizLoading(false);
+    }
+  }
+
+  function refuserQuiz() {
+    setMessages(prev => [...prev, {
+      role: 'assistant', content: 'Pas de souci.', rawContent: '', isQuizDeclined: true,
+    }]);
+  }
+
+  async function terminerQuiz(resultats) {
+    setQuizQuestions(null);
+    fetch('/api/chat-debrief', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, action: 'quiz-submit', learner_code: learnerCode || null, resultats }),
+    }).catch(() => { /* l'enregistrement est un bonus */ });
+
+    const score = resultats.filter(r => r.correct).length;
+    const aRevoir = [...new Set(
+      resultats.filter(r => !r.correct).map(r => r.notion_concept).filter(Boolean)
+    )];
+    setMessages(prev => [...prev, {
+      role: 'assistant', content: '', rawContent: '',
+      isQuizResult: true,
+      quizScore: score, quizTotal: resultats.length, quizToReview: aRevoir,
+      flashDeckId,
+    }]);
   }
 
   async function handleConnectionSubmit(e) {
@@ -517,6 +585,8 @@ export default function Chat() {
             onFeedback={m.showFeedback && m.messageId
               ? (helpful) => sendFeedback(m.messageId, helpful)
               : null}
+            onQuizAccept={m.isQuizOffer ? () => lancerQuiz(m.quizOutcomes) : undefined}
+            onQuizDecline={m.isQuizOffer ? refuserQuiz : undefined}
           />
         ))}
         {readinessPrompt && (
@@ -554,10 +624,17 @@ export default function Chat() {
             <div className="text-xs px-4 py-2" style={{color:'var(--text3)'}}>Analyse du parcours…</div>
           </div>
         )}
+        {quizLoading && (
+          <div className="flex justify-center mb-4">
+            <div className="text-xs px-4 py-2" style={{color:'var(--text3)'}}>Préparation du test…</div>
+          </div>
+        )}
         {error && <p className="text-center text-red-500 text-xs mb-4">{error}</p>}
         <div ref={bottomRef} />
       </div>
-      {connectionPrompt ? (
+      {quizQuestions ? (
+        <QuizPanel questions={quizQuestions} onDone={terminerQuiz} />
+      ) : connectionPrompt ? (
         <div className="border-t bg-white px-4 py-4 max-w-2xl mx-auto w-full">
           <p className="text-sm text-gray-700 mb-2 font-medium">
             Avant de continuer — en quelques mots, quel lien fais-tu entre <span className="text-[#0a9370]">{connectionPrompt.notionConcept}</span> et ce que tu savais déjà ?
