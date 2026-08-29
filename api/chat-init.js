@@ -3,14 +3,23 @@ import { createClient } from '@supabase/supabase-js';
 import { jwtVerify } from 'jose';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const supabase = createClient(
-  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-const jwtSecret = new TextEncoder().encode(process.env.JWT_SECRET);
+
+// Un nœud "chapitre" (parent d'un autre nœud) n'a pas de contenu propre à faire
+// travailler à l'élève — on le retire du parcours socratique. La hiérarchie reste
+// visible côté enseignant uniquement (chantier séparé pour la navigation élève).
+export function filtrerNoeudsParcours(nodes) {
+  const parentIds = new Set(nodes.filter(n => n.parent_id).map(n => n.parent_id));
+  return nodes.filter(n => !parentIds.has(n.id));
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+  const jwtSecret = new TextEncoder().encode(process.env.JWT_SECRET);
 
   const { token, learner_code } = req.body;
   if (!token) return res.status(400).json({ error: 'token requis' });
@@ -49,13 +58,15 @@ export default async function handler(req, res) {
   }
 
   // SOURCE A : curriculum_nodes (seule source qui active les bookends)
-  const { data: nodes } = await supabase
+  const { data: nodesRaw } = await supabase
     .from('corpus_curriculum_nodes')
-    .select('concept, definition')
+    .select('id, concept, definition, parent_id')
     .eq('space_id', space_id)
     .order('created_at');
 
-  if (nodes && nodes.length > 0) {
+  const nodes = filtrerNoeudsParcours(nodesRaw || []);
+
+  if (nodes.length > 0) {
     // Récupérer les sessions précédentes si learner_code connu
     let previousNotions = [];
     let lastSessionDate = null;

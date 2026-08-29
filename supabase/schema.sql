@@ -62,7 +62,7 @@ create table corpus_curriculum_nodes (
   concept text not null,
   definition text not null,
   level text,
-  parent_id uuid references corpus_curriculum_nodes,
+  parent_id uuid references corpus_curriculum_nodes on delete set null,
   created_at timestamptz default now()
 );
 alter table corpus_curriculum_nodes enable row level security;
