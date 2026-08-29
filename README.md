@@ -21,6 +21,27 @@ automatiquement (`chat-init.js` SOURCE A). Les nœuds « chapitre » sont exclus
 génération est une branche `action: 'generate'` de `api/curriculum.js`, pas une nouvelle
 fonction. Ne pas ajouter de fichier dans `api/` sans en fusionner un autre.
 
+## Défi de consolidation
+
+À la fin d'un parcours socratique (mode socratique + curriculum défini), l'apprenant peut
+lancer un QCM court sur les notions parcourues — pondéré vers les notions fragiles,
+auto-corrigé, feedback immédiat par question. Opt-in (autonomie). Aucun point ni classement.
+
+Les résultats vont dans `corpus_quiz_attempts` (signal **distinct** de l'acquisition
+socratique — `corpus_messages.notion_acquired` n'est jamais réécrit) et alimentent la
+section « Défi de consolidation » du tableau de bord enseignant.
+
+Fondements RISS : effet de test / récupération en mémoire (Latimier 2019 tel-02461323 ;
+Fernandez 2017 tel-01684276 ; McMullin & Masson 2023 W4389335350), autonomie perçue
+(Tessier 2006 hal-00388563), feedback ciblant la cause (Fouchet-Isambard 2025 hal-05361521),
+anti-surjustification (Gernigon 1998 hal-02166286).
+
+**Contrainte** : plafond 12 fonctions Vercel Hobby. La génération et l'enregistrement du
+quiz sont des branches `action` de `api/chat-debrief.js`, pas une nouvelle fonction.
+
+**Migration** : `supabase/migrations/2026-08-28-quiz-attempts.sql` à exécuter manuellement
+sur `dfoaumjleqtxjeaplnna` avant déploiement.
+
 ## Tests
 
 `npm test` — unitaires Vitest : `curriculumDraft` (draftToNodes / groupNodes), branche
