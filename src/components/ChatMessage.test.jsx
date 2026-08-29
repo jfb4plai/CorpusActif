@@ -16,6 +16,12 @@ describe('ChatMessage — rendus quiz', () => {
     expect(onDecline).toHaveBeenCalled()
   })
 
+  it('isQuizOffer sans callbacks : texte présent, pas de bouton Oui', () => {
+    render(<ChatMessage isQuizOffer />)
+    expect(screen.getByText(/renforce ta mémoire/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /oui/i })).toBeNull()
+  })
+
   it('isQuizDeclined : message discret', () => {
     render(<ChatMessage isQuizDeclined content="Pas de souci." />)
     expect(screen.getByText('Pas de souci.')).toBeInTheDocument()

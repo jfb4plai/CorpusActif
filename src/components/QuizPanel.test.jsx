@@ -39,6 +39,18 @@ describe('QuizPanel', () => {
     ])
   })
 
+  it('cliquer "Voir mon bilan" deux fois n\'appelle onDone qu\'une seule fois', () => {
+    const onDone = vi.fn()
+    render(<QuizPanel questions={questions} onDone={onDone} />)
+    fireEvent.click(screen.getByRole('button', { name: 'a0' }))
+    fireEvent.click(screen.getByRole('button', { name: /question suivante/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'b3' }))
+    const bilan = screen.getByRole('button', { name: /voir mon bilan/i })
+    fireEvent.click(bilan)
+    fireEvent.click(bilan)
+    expect(onDone).toHaveBeenCalledTimes(1)
+  })
+
   it('affiche la progression i/N', () => {
     render(<QuizPanel questions={questions} onDone={() => {}} />)
     expect(screen.getByText('1 / 2')).toBeInTheDocument()

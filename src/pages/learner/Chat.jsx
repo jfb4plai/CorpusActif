@@ -44,6 +44,7 @@ export default function Chat() {
   const [pendingNotions, setPendingNotions] = useState(null);
   const [quizQuestions, setQuizQuestions] = useState(null); // null = pas de quiz en cours
   const [quizLoading, setQuizLoading] = useState(false);
+  const [quizAnswered, setQuizAnswered] = useState(false);
   const bottomRef = useRef();
 
   useEffect(() => {
@@ -394,6 +395,8 @@ export default function Chat() {
   }
 
   async function lancerQuiz(outcomes) {
+    if (quizLoading) return;
+    setQuizAnswered(true);
     setQuizLoading(true);
     try {
       const payloadNotions = notions.map(n => ({
@@ -424,6 +427,7 @@ export default function Chat() {
   }
 
   function refuserQuiz() {
+    setQuizAnswered(true);
     setMessages(prev => [...prev, {
       role: 'assistant', content: 'Pas de souci.', rawContent: '', isQuizDeclined: true,
     }]);
@@ -585,8 +589,8 @@ export default function Chat() {
             onFeedback={m.showFeedback && m.messageId
               ? (helpful) => sendFeedback(m.messageId, helpful)
               : null}
-            onQuizAccept={m.isQuizOffer ? () => lancerQuiz(m.quizOutcomes) : undefined}
-            onQuizDecline={m.isQuizOffer ? refuserQuiz : undefined}
+            onQuizAccept={m.isQuizOffer && !quizAnswered ? () => lancerQuiz(m.quizOutcomes) : undefined}
+            onQuizDecline={m.isQuizOffer && !quizAnswered ? refuserQuiz : undefined}
           />
         ))}
         {readinessPrompt && (

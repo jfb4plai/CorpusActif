@@ -138,16 +138,18 @@ export default function ChatMessage({
           <p className="leading-relaxed mb-3" style={{color:'var(--text)'}}>
             Te tester sur ce que tu viens de voir renforce ta mémoire. Veux-tu essayer ?
           </p>
-          <div className="flex gap-2">
-            <button type="button" onClick={onQuizAccept}
-              className="bg-[#0a9370] text-white px-4 py-2 rounded-full text-xs font-semibold">
-              Oui
-            </button>
-            <button type="button" onClick={onQuizDecline}
-              className="border border-gray-300 text-gray-600 px-4 py-2 rounded-full text-xs font-medium">
-              Non merci
-            </button>
-          </div>
+          {onQuizAccept && (
+            <div className="flex gap-2">
+              <button type="button" onClick={onQuizAccept}
+                className="bg-[#0a9370] text-white px-4 py-2 rounded-full text-xs font-semibold">
+                Oui
+              </button>
+              <button type="button" onClick={onQuizDecline}
+                className="border border-gray-300 text-gray-600 px-4 py-2 rounded-full text-xs font-medium">
+                Non merci
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );

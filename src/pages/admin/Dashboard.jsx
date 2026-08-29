@@ -65,7 +65,7 @@ export default function Dashboard({ spaceId }) {
             .eq('space_id', spaceId).order('created_at', { ascending: false }),
           supabase.from('corpus_quiz_attempts')
             .select('learner_code, notion_concept, correct, created_at')
-            .eq('space_id', spaceId).order('created_at', { ascending: false }),
+            .eq('space_id', spaceId).order('created_at', { ascending: false }).limit(2000),
         ]);
 
       if (!messages) return;
