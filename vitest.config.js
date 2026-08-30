@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 // Vitest 4 removed `environmentMatchGlobs`. The equivalent is `test.projects`:
-// component tests under src/pages/** run in jsdom, everything else in fast node.
+// component tests under src/pages/** and src/components/** run in jsdom, everything else in fast node.
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -14,7 +14,7 @@ export default defineConfig({
           name: 'node',
           environment: 'node',
           include: ['**/*.{test,spec}.{js,jsx}'],
-          exclude: ['src/pages/**', 'node_modules/**', 'dist/**'],
+          exclude: ['src/pages/**', 'src/components/**', 'node_modules/**', 'dist/**'],
         },
       },
       {
@@ -22,7 +22,7 @@ export default defineConfig({
         test: {
           name: 'pages',
           environment: 'jsdom',
-          include: ['src/pages/**/*.{test,spec}.{js,jsx}'],
+          include: ['src/pages/**/*.{test,spec}.{js,jsx}', 'src/components/**/*.{test,spec}.{js,jsx}'],
         },
       },
     ],

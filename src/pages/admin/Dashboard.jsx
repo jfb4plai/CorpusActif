@@ -43,12 +43,13 @@ export default function Dashboard({ spaceId }) {
   const [handoffLoading, setHandoffLoading] = useState(null);
   const [handoffError, setHandoffError] = useState('');
   const [connections, setConnections] = useState([]);
+  const [quizStats, setQuizStats] = useState([]);
   // Suivi d'acquisition (curriculum × apprenants)
   const [acq, setAcq] = useState(null); // { rows, cols, enrolled, statusOf, classStats, difficultiesByCode, reaborder, hasCurriculum, threshold }
 
   useEffect(() => {
     async function load() {
-      const [{ data: messages }, { data: nodes }, { data: codes }, { data: space }, { data: connData }, { data: confirmations }] =
+      const [{ data: messages }, { data: nodes }, { data: codes }, { data: space }, { data: connData }, { data: confirmations }, { data: quizRows }] =
         await Promise.all([
           supabase.from('corpus_messages')
             .select('learner_code, question, answer, is_out_of_base, helpful, notion_concept, notion_acquired, created_at')
@@ -62,10 +63,28 @@ export default function Dashboard({ spaceId }) {
           supabase.from('corpus_material_confirmations')
             .select('learner_code, confirmed, created_at')
             .eq('space_id', spaceId).order('created_at', { ascending: false }),
+          supabase.from('corpus_quiz_attempts')
+            .select('learner_code, notion_concept, correct, created_at')
+            .eq('space_id', spaceId).order('created_at', { ascending: false }).limit(2000),
         ]);
 
       if (!messages) return;
       setConnections(connData || []);
+
+      // ---- Défi de consolidation : taux de réussite par notion ----
+      const quiz = quizRows || [];
+      const quizByNotion = {};
+      quiz.forEach(r => {
+        const k = r.notion_concept || '(sans notion)';
+        (quizByNotion[k] ??= { total: 0, correct: 0 });
+        quizByNotion[k].total++;
+        if (r.correct) quizByNotion[k].correct++;
+      });
+      setQuizStats(
+        Object.entries(quizByNotion)
+          .map(([concept, s]) => ({ concept, total: s.total, correct: s.correct, pct: s.total ? s.correct / s.total : 0 }))
+          .sort((a, b) => a.pct - b.pct)
+      );
 
       const total = messages.length;
       const outOfBase = messages.filter(m => m.is_out_of_base).length;
@@ -416,6 +435,34 @@ export default function Dashboard({ spaceId }) {
           })}
         </div>
       </div>
+
+      {quizStats.length > 0 && (
+        <div className="dashboard-print">
+          <h3 className="label-upper mb-1">Défi de consolidation</h3>
+          <p className="text-xs text-gray-400 mb-3">
+            Taux de réussite au QCM post-parcours, par notion (agrégat classe, codes anonymes).
+            Une notion acquise au parcours mais souvent ratée ici n'est pas encore consolidée.
+            S'appuie sur l'effet de test — récupération en mémoire (McMullin &amp; Masson, 2023).
+          </p>
+          <div className="space-y-1.5">
+            {quizStats.map(q => {
+              const alerte = q.pct < 0.5;
+              return (
+                <div key={q.concept}
+                  className="flex items-center gap-3 border rounded px-4 py-2.5"
+                  style={{ background: alerte ? '#fff7ed' : 'white', borderColor: alerte ? '#fed7aa' : 'var(--border)' }}>
+                  <span className="shrink-0 text-xs font-bold px-2 py-0.5 rounded"
+                    style={{ background: alerte ? '#f97316' : '#0a9370', color: 'white' }}>
+                    {Math.round(q.pct * 100)} %
+                  </span>
+                  <span className="text-sm text-gray-800 flex-1">{q.concept}</span>
+                  <span className="text-xs text-gray-500 shrink-0">{q.correct}/{q.total} réponses justes</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {blockedQuestions.length > 0 && (
         <div className="dashboard-print">
