@@ -63,6 +63,7 @@ create table corpus_curriculum_nodes (
   definition text not null,
   level text,
   parent_id uuid references corpus_curriculum_nodes on delete set null,
+  priority text not null default 'essentiel' check (priority in ('essentiel', 'complementaire')),
   created_at timestamptz default now()
 );
 alter table corpus_curriculum_nodes enable row level security;

@@ -54,7 +54,7 @@ export default function Dashboard({ spaceId }) {
           supabase.from('corpus_messages')
             .select('learner_code, question, answer, is_out_of_base, helpful, notion_concept, notion_acquired, created_at')
             .eq('space_id', spaceId).order('created_at', { ascending: false }).limit(500),
-          supabase.from('corpus_curriculum_nodes').select('concept').eq('space_id', spaceId).order('created_at'),
+          supabase.from('corpus_curriculum_nodes').select('concept, priority').eq('space_id', spaceId).order('created_at'),
           supabase.from('corpus_learner_codes').select('code, difficulties').eq('space_id', spaceId),
           supabase.from('corpus_spaces').select('class_acquisition_threshold').eq('id', spaceId).single(),
           supabase.from('corpus_notion_connections')
@@ -142,8 +142,12 @@ export default function Dashboard({ spaceId }) {
         byPair[m.notion_concept][code].push(m);
       });
 
-      // Lignes : curriculum d'abord, puis notions extraites hors curriculum
-      const curriculumConcepts = (nodes || []).map(n => n.concept);
+      // Lignes : curriculum d'abord (essentiels avant complémentaires), puis notions extraites hors curriculum
+      const priorityByConcept = Object.fromEntries((nodes || []).map(n => [n.concept, n.priority || 'essentiel']));
+      const curriculumConcepts = (nodes || [])
+        .slice()
+        .sort((a, b) => (a.priority === 'complementaire' ? 1 : 0) - (b.priority === 'complementaire' ? 1 : 0))
+        .map(n => n.concept);
       const curriculumSet = new Set(curriculumConcepts);
       const extraConcepts = [...new Set(Object.keys(byPair))].filter(c => !curriculumSet.has(c));
       const rows = [
@@ -170,7 +174,7 @@ export default function Dashboard({ spaceId }) {
 
       setAcq({
         rows, cols, enrolled, statusOf, classStats, difficultiesByCode, readinessByCode,
-        reaborder, hasCurriculum: curriculumConcepts.length > 0, threshold,
+        reaborder, hasCurriculum: curriculumConcepts.length > 0, threshold, priorityByConcept,
       });
     }
     load();
@@ -267,7 +271,12 @@ export default function Dashboard({ spaceId }) {
                       style={{ background: critical ? '#dc2626' : '#f97316', color: 'white' }}>
                       {critical ? 'Acquise par personne' : `${Math.round(r.pct * 100)} %`}
                     </span>
-                    <span className="text-sm text-gray-800 flex-1">{r.concept}</span>
+                    <span className="text-sm text-gray-800 flex-1">
+                      {r.concept}
+                      {acq.priorityByConcept?.[r.concept] === 'complementaire' && (
+                        <span className="ml-2 text-xs text-gray-400 font-normal">(complémentaire)</span>
+                      )}
+                    </span>
                     <span className="text-xs text-gray-500 shrink-0">
                       {r.acquired}/{r.total} acquis
                       {r.never > 0 && ` · ${r.never} jamais abordée`}
@@ -290,7 +299,12 @@ export default function Dashboard({ spaceId }) {
               return (
                 <div key={concept} className="bg-white border rounded px-4 py-2.5">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-sm text-gray-800 truncate pr-3">{concept}</span>
+                    <span className="text-sm text-gray-800 truncate pr-3">
+                      {concept}
+                      {acq.priorityByConcept?.[concept] === 'complementaire' && (
+                        <span className="ml-2 text-xs text-gray-400 font-normal">(complémentaire)</span>
+                      )}
+                    </span>
                     <span className="text-xs text-gray-500 shrink-0">{Math.round(cs.pct * 100)} % · {cs.acquired}/{cs.total}</span>
                   </div>
                   <div className="flex h-2.5 rounded overflow-hidden bg-gray-100">

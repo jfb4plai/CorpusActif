@@ -27,9 +27,9 @@ describe('draftToNodes', () => {
     const { parents, enfants } = draftToNodes(draft, kept)
     expect(parents).toEqual([{ tempId: 'chap:0', concept: 'Chapitre A', definition: '', level: null }])
     expect(enfants).toEqual([
-      { tempId: '0:0', parentTempId: 'chap:0', concept: 'A1', definition: 'def A1' },
-      { tempId: '0:1', parentTempId: 'chap:0', concept: 'A2', definition: 'def A2' },
-      { tempId: 'orphan:0', parentTempId: null, concept: 'X1', definition: 'def X1' },
+      { tempId: '0:0', parentTempId: 'chap:0', concept: 'A1', definition: 'def A1', priority: 'essentiel' },
+      { tempId: '0:1', parentTempId: 'chap:0', concept: 'A2', definition: 'def A2', priority: 'essentiel' },
+      { tempId: 'orphan:0', parentTempId: null, concept: 'X1', definition: 'def X1', priority: 'essentiel' },
     ])
   })
 
@@ -45,7 +45,7 @@ describe('draftToNodes', () => {
     const { parents, enfants } = draftToNodes(draft, kept)
     expect(parents).toEqual([])
     expect(enfants).toEqual([
-      { tempId: '0:0', parentTempId: null, concept: 'A1', definition: 'def A1' },
+      { tempId: '0:0', parentTempId: null, concept: 'A1', definition: 'def A1', priority: 'essentiel' },
     ])
   })
 
@@ -54,7 +54,7 @@ describe('draftToNodes', () => {
     const { parents, enfants } = draftToNodes(draft, kept)
     expect(parents).toEqual([{ tempId: 'chap:1', concept: 'Chapitre B', definition: '', level: null }])
     expect(enfants).toEqual([
-      { tempId: 'orphan:0', parentTempId: 'chap:1', concept: 'X1', definition: 'def X1' },
+      { tempId: 'orphan:0', parentTempId: 'chap:1', concept: 'X1', definition: 'def X1', priority: 'essentiel' },
     ])
   })
 
@@ -66,6 +66,18 @@ describe('draftToNodes', () => {
     const kept = { '0:0': { keep: true, parentKey: 'chap:0', concept: 'A1 modifié', definition: 'nouvelle def' } }
     const { enfants } = draftToNodes(draft, kept)
     expect(enfants[0]).toMatchObject({ concept: 'A1 modifié', definition: 'nouvelle def' })
+  })
+
+  it('conserve la priorité complémentaire choisie par l\'enseignant', () => {
+    const kept = { '0:0': { keep: true, parentKey: 'chap:0', priority: 'complementaire' } }
+    const { enfants } = draftToNodes(draft, kept)
+    expect(enfants[0]).toMatchObject({ priority: 'complementaire' })
+  })
+
+  it('toute valeur autre que complementaire retombe sur essentiel', () => {
+    const kept = { '0:0': { keep: true, parentKey: 'chap:0', priority: 'autre-chose' } }
+    const { enfants } = draftToNodes(draft, kept)
+    expect(enfants[0]).toMatchObject({ priority: 'essentiel' })
   })
 })
 

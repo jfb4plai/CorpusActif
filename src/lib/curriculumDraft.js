@@ -7,10 +7,11 @@
 // --- draftToNodes -----------------------------------------------------------
 
 // draft : { chapitres: [{ titre, concepts: [{ concept, definition }] }], concepts_sans_chapitre: [{ concept, definition }] }
-// kept  : objet { [key]: { keep, parentKey, concept?, definition? } }
+// kept  : objet { [key]: { keep, parentKey, concept?, definition?, priority? } }
 //   key       = `${chapIdx}:${conceptIdx}` pour un concept de chapitre, `orphan:${idx}` pour un concept sans chapitre
 //   parentKey = `chap:${chapIdx}` (rattaché à un chapitre) ou null (sans chapitre)
 //   concept / definition : valeurs éditées par l'enseignant (sinon on prend celles du draft)
+//   priority  : 'essentiel' (défaut) ou 'complementaire'
 export function draftToNodes(draft, kept) {
   const enfants = []
   const parentKeysUtilises = new Set()
@@ -25,6 +26,7 @@ export function draftToNodes(draft, kept) {
       parentTempId,
       concept: (choix.concept ?? srcConcept ?? '').trim(),
       definition: (choix.definition ?? srcDefinition ?? '').trim(),
+      priority: choix.priority === 'complementaire' ? 'complementaire' : 'essentiel',
     })
   }
 

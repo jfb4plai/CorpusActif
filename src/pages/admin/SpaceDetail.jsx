@@ -281,6 +281,14 @@ export default function SpaceDetail() {
           )}
         </div>
 
+        {pedagogicalMode === 'socratique' && (
+          <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded text-xs text-gray-500" style={{borderLeft:'3px solid var(--border)'}}>
+            <strong>Ce qui reste hors de votre contrôle direct :</strong> c'est le modèle qui décide, au fil de l'échange, qu'une notion est acquise (déclencheur [NOTION_SUIVANTE]) — ce critère n'est pas paramétrable. {hasCurriculum
+              ? "Le curriculum que vous avez défini pilote le parcours."
+              : "Sans curriculum défini dans l'onglet Curriculum, les notions proposées à l'apprenant sont extraites automatiquement des documents par l'IA — vous n'en choisissez alors ni le contenu ni l'ordre."}
+          </div>
+        )}
+
         {pedagogicalMode === 'socratique' && !hasCurriculum && (
           <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700" style={{borderLeft:'3px solid #f97316'}}>
             <strong>Bilans de session désactivés.</strong> Les rappels de progression, la carte de notions et le message personnalisé nécessitent un curriculum défini dans l'onglet Curriculum.

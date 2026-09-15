@@ -73,7 +73,7 @@ function buildSocraticPrompt(spaceName, chunks, outOfBaseMode, documents, histor
   const curriculumSection = curriculumNodes.length > 0
     ? `\nConceptes du curriculum de cet espace :\n${
         curriculumNodes.map(n =>
-          `- ${n.concept}${n.definition ? ` : ${n.definition}` : ''}${n.level ? ` (${n.level})` : ''}`
+          `- ${n.concept}${n.definition ? ` : ${n.definition}` : ''}${n.level ? ` (${n.level})` : ''}${n.priority === 'complementaire' ? ' [complémentaire]' : ''}`
         ).join('\n')
       }\n\nOriente tes questions vers ces concepts lorsqu'ils sont pertinents à ce que l'apprenant explore.\n`
     : '';
@@ -189,7 +189,7 @@ export default async function handler(req, res) {
   if (pedagogicalMode === 'socratique') {
     const { data: nodes } = await supabase
       .from('corpus_curriculum_nodes')
-      .select('concept, definition, level')
+      .select('concept, definition, level, priority')
       .eq('space_id', space_id)
       .order('created_at');
     curriculumNodes = nodes || [];

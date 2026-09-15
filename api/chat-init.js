@@ -12,6 +12,13 @@ export function filtrerNoeudsParcours(nodes) {
   return nodes.filter(n => !parentIds.has(n.id));
 }
 
+// Les concepts essentiels passent en premier dans le parcours élève ; à priorité
+// égale, l'ordre de création choisi par l'enseignant est conservé (tri stable).
+export function trierParPriorite(nodes) {
+  const rang = n => (n.priority === 'complementaire' ? 1 : 0);
+  return [...nodes].sort((a, b) => rang(a) - rang(b));
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -60,11 +67,11 @@ export default async function handler(req, res) {
   // SOURCE A : curriculum_nodes (seule source qui active les bookends)
   const { data: nodesRaw } = await supabase
     .from('corpus_curriculum_nodes')
-    .select('id, concept, definition, parent_id')
+    .select('id, concept, definition, parent_id, priority')
     .eq('space_id', space_id)
     .order('created_at');
 
-  const nodes = filtrerNoeudsParcours(nodesRaw || []);
+  const nodes = trierParPriorite(filtrerNoeudsParcours(nodesRaw || []));
 
   if (nodes.length > 0) {
     // Récupérer les sessions précédentes si learner_code connu

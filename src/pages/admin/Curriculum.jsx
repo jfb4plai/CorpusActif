@@ -6,7 +6,7 @@ const LEVELS = ['Primaire', 'Secondaire inférieur', 'Secondaire supérieur', 'G
 
 export default function Curriculum({ spaceId, session }) {
   const [nodes, setNodes] = useState([]);
-  const [form, setForm] = useState({ concept: '', definition: '', level: '', parent_id: '' });
+  const [form, setForm] = useState({ concept: '', definition: '', level: '', parent_id: '', priority: 'essentiel' });
   const [editId, setEditId] = useState(null);
   const [templates, setTemplates] = useState([]);
   const [templateName, setTemplateName] = useState('');
@@ -54,7 +54,7 @@ export default function Curriculum({ spaceId, session }) {
       body: JSON.stringify(body),
     });
     if (res.ok) {
-      setForm({ concept: '', definition: '', level: '', parent_id: '' });
+      setForm({ concept: '', definition: '', level: '', parent_id: '', priority: 'essentiel' });
       setEditId(null);
       loadNodes();
     }
@@ -69,6 +69,7 @@ export default function Curriculum({ spaceId, session }) {
       concept: n.concept,
       definition: n.definition,
       level: n.level || null,
+      priority: n.priority || 'essentiel',
       parentIndex: n.parent_id ? nodes.findIndex(x => x.id === n.parent_id) : null,
     }));
     const { error } = await supabase
@@ -109,7 +110,7 @@ export default function Curriculum({ spaceId, session }) {
         const rows = parents.map(n => {
           const id = crypto.randomUUID();
           idParIndex[n._i] = id;
-          return { id, space_id: spaceId, concept: n.concept, definition: n.definition, level: n.level || null, parent_id: null };
+          return { id, space_id: spaceId, concept: n.concept, definition: n.definition, level: n.level || null, priority: n.priority || 'essentiel', parent_id: null };
         });
         const { error: pErr } = await supabase.from('corpus_curriculum_nodes').insert(rows);
         if (pErr) { console.error(pErr); return; }
@@ -124,6 +125,7 @@ export default function Curriculum({ spaceId, session }) {
             concept: n.concept,
             definition: n.definition,
             level: n.level || null,
+            priority: n.priority || 'essentiel',
             parent_id: idParIndex[n.parentIndex] ?? null,
           }))
         );
@@ -164,11 +166,11 @@ export default function Curriculum({ spaceId, session }) {
     const k = {};
     (resultat.chapitres || []).forEach((ch, ci) => {
       (ch.concepts || []).forEach((c, coi) => {
-        k[`${ci}:${coi}`] = { keep: true, parentKey: `chap:${ci}`, concept: c.concept, definition: c.definition || '' };
+        k[`${ci}:${coi}`] = { keep: true, parentKey: `chap:${ci}`, concept: c.concept, definition: c.definition || '', priority: 'essentiel' };
       });
     });
     (resultat.concepts_sans_chapitre || []).forEach((c, i) => {
-      k[`orphan:${i}`] = { keep: true, parentKey: null, concept: c.concept, definition: c.definition || '' };
+      k[`orphan:${i}`] = { keep: true, parentKey: null, concept: c.concept, definition: c.definition || '', priority: 'essentiel' };
     });
     return k;
   }
@@ -244,11 +246,11 @@ export default function Curriculum({ spaceId, session }) {
           const pid = await insererNoeud({ space_id: spaceId, concept: p.concept, definition: p.definition, level: p.level, parent_id: null });
           idParTempId[p.tempId] = pid;
           for (const e of (enfantsParParent.get(p.tempId) || [])) {
-            await insererNoeud({ space_id: spaceId, concept: e.concept, definition: e.definition, level: null, parent_id: pid });
+            await insererNoeud({ space_id: spaceId, concept: e.concept, definition: e.definition, level: null, priority: e.priority, parent_id: pid });
           }
         }
         for (const e of sansChapitre) {
-          await insererNoeud({ space_id: spaceId, concept: e.concept, definition: e.definition, level: null, parent_id: null });
+          await insererNoeud({ space_id: spaceId, concept: e.concept, definition: e.definition, level: null, priority: e.priority, parent_id: null });
         }
       } catch (errInsert) {
         // Nettoyage best-effort : ne pas laisser de nœuds à moitié insérés polluer le parcours.
@@ -277,10 +279,15 @@ export default function Curriculum({ spaceId, session }) {
         <div>
           <p className="text-sm font-medium text-gray-800">{n.concept}</p>
           <p className="text-xs text-gray-500 mt-1">{n.definition}</p>
-          {n.level && <span className="text-xs text-[#0a9370] bg-[#0a9370]/10 px-2 py-0.5 rounded-full mt-1 inline-block">{n.level}</span>}
+          <div className="flex gap-1.5 mt-1">
+            {n.level && <span className="text-xs text-[#0a9370] bg-[#0a9370]/10 px-2 py-0.5 rounded-full inline-block">{n.level}</span>}
+            {n.priority === 'complementaire' && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full inline-block">Complémentaire</span>
+            )}
+          </div>
         </div>
         <div className="flex gap-3 ml-4 shrink-0">
-          <button onClick={() => { setEditId(n.id); setForm({ concept: n.concept, definition: n.definition, level: n.level || '', parent_id: n.parent_id || '' }); }}
+          <button onClick={() => { setEditId(n.id); setForm({ concept: n.concept, definition: n.definition, level: n.level || '', parent_id: n.parent_id || '', priority: n.priority || 'essentiel' }); }}
             className="text-xs text-blue-500 hover:text-blue-700">Modifier</button>
           <button onClick={() => deleteNode(n.id)} className="text-xs text-red-400 hover:text-red-600">Supprimer</button>
         </div>
@@ -385,7 +392,9 @@ export default function Curriculum({ spaceId, session }) {
           <p className="text-xs text-teal-800">
             <strong>Brouillon généré</strong> — cochez et ajustez ce que vous gardez, puis
             ajoutez au curriculum. Rien n'est enregistré tant que vous n'avez pas cliqué sur
-            « Ajouter au curriculum ». Votre curriculum actuel n'est pas modifié.
+            « Ajouter au curriculum ». Votre curriculum actuel n'est pas modifié. Tous les
+            concepts sont proposés en <strong>Essentiel</strong> par défaut — repassez en
+            Complémentaire ceux que l'apprenant peut voir en second plan.
           </p>
 
           {(draft.chapitres || []).map((ch, ci) => (
@@ -434,6 +443,16 @@ export default function Curriculum({ spaceId, session }) {
                         <option key={i} value={`chap:${i}`}>↳ {chapTitre(i)}</option>
                       ))}
                     </select>
+                    <select
+                      value={k.priority ?? 'essentiel'}
+                      onChange={e => updateKept(key, { priority: e.target.value })}
+                      aria-label={`Priorité de ${c.concept}`}
+                      title="Essentiel = proposé en premier dans le parcours et priorisé en remédiation"
+                      className="border rounded px-1 py-1 text-xs shrink-0 max-w-[7rem]"
+                    >
+                      <option value="essentiel">Essentiel</option>
+                      <option value="complementaire">Complémentaire</option>
+                    </select>
                   </div>
                 );
               })}
@@ -480,6 +499,16 @@ export default function Curriculum({ spaceId, session }) {
                       {(draft.chapitres || []).map((_, ci) => (
                         <option key={ci} value={`chap:${ci}`}>↳ {chapTitre(ci)}</option>
                       ))}
+                    </select>
+                    <select
+                      value={k.priority ?? 'essentiel'}
+                      onChange={e => updateKept(key, { priority: e.target.value })}
+                      aria-label={`Priorité de ${c.concept}`}
+                      title="Essentiel = proposé en premier dans le parcours et priorisé en remédiation"
+                      className="border rounded px-1 py-1 text-xs shrink-0 max-w-[7rem]"
+                    >
+                      <option value="essentiel">Essentiel</option>
+                      <option value="complementaire">Complémentaire</option>
                     </select>
                   </div>
                 );
@@ -538,12 +567,33 @@ export default function Curriculum({ spaceId, session }) {
             {nodes.map(n => <option key={n.id} value={n.id}>↳ {n.concept}</option>)}
           </select>
         </div>
+        <div>
+          <p className="text-xs text-gray-500 mb-1">Priorité</p>
+          <div className="flex gap-2">
+            {[
+              { value: 'essentiel', label: 'Essentiel' },
+              { value: 'complementaire', label: 'Complémentaire' },
+            ].map(p => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setForm(f => ({ ...f, priority: p.value }))}
+                className={`px-3 py-1 rounded border text-xs font-medium transition ${form.priority === p.value ? 'bg-[#0a9370] text-white border-[#0a9370]' : 'text-gray-600 border-gray-300 hover:border-teal-400'}`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-1.5">
+            Les concepts essentiels sont proposés en premier dans le parcours de l'apprenant et priorisés dans l'alerte de remédiation du tableau de bord. Un concept complémentaire reste dans le parcours mais en second plan — cela n'influence ni la rigueur ni le niveau d'exigence des questions posées.
+          </p>
+        </div>
         <div className="flex gap-2">
           <button type="submit" className="bg-[#0a9370] text-white px-4 py-2 rounded text-sm font-medium">
             {editId ? 'Enregistrer' : 'Ajouter'}
           </button>
           {editId && (
-            <button type="button" onClick={() => { setEditId(null); setForm({ concept: '', definition: '', level: '', parent_id: '' }); }}
+            <button type="button" onClick={() => { setEditId(null); setForm({ concept: '', definition: '', level: '', parent_id: '', priority: 'essentiel' }); }}
               className="border px-4 py-2 rounded text-sm">
               Annuler
             </button>
@@ -559,7 +609,7 @@ export default function Curriculum({ spaceId, session }) {
                 <div className="flex justify-between items-center">
                   <p className="text-sm font-semibold text-gray-800">{g.parent.concept}</p>
                   <div className="flex gap-3 shrink-0">
-                    <button onClick={() => { setEditId(g.parent.id); setForm({ concept: g.parent.concept, definition: g.parent.definition, level: g.parent.level || '', parent_id: g.parent.parent_id || '' }); }}
+                    <button onClick={() => { setEditId(g.parent.id); setForm({ concept: g.parent.concept, definition: g.parent.definition, level: g.parent.level || '', parent_id: g.parent.parent_id || '', priority: g.parent.priority || 'essentiel' }); }}
                       className="text-xs text-blue-500 hover:text-blue-700">Modifier</button>
                     <button onClick={() => deleteNode(g.parent.id)} className="text-xs text-red-400 hover:text-red-600">Supprimer</button>
                   </div>
